@@ -113,11 +113,34 @@ int main(int argc, char * argv[]) {
     }*/
     
     
-    /* first read loop -- read headers */
+    /* first read loop -- read headers
     if (minet_read(sock, buf, BUFSIZE) < 0)
     {
         error(sock, "Failed to read\n");
     }
+    /* first read loop -- read headers */
+    
+    int n, i;
+    bptr = buf; // pointer to buf, needed to be passed as an argument to wrinte_n_bytes
+
+    memset(buf, 0, BUFSIZE);
+    n = minet_read(sock, buf, BUFSIZE);
+    if (n < 0){ 
+        error("ERROR reading from socket");
+        break;
+    }
+    if(n==0) {
+        error("server connection closed.");
+    }
+    
+    for(i = 0; i < BUFSIZE; i++){
+       
+        datalen = datalen + 1;
+        if(buf[i] = '\r' && buf[i+2] = '\r')
+           break;
+    }
+
+    bptr2 = buf[i+4]; // Points to the first non \n character in the second read loop.
     
     /* examine return code */
     //Skip "HTTP/1.0"
@@ -135,8 +158,10 @@ int main(int argc, char * argv[]) {
 
     rc = atoi(num);
 
-    if (rc != 200 && (rc < 300 || rc >= 400))
+    if (rc != 200){
         wheretoprint = stderr;
+        ok = false;
+    }
 
     fprintf(wheretoprint, "Status: %d\n\n", rc);
 
@@ -144,15 +169,15 @@ int main(int argc, char * argv[]) {
     while (curr[-1] != '\n')
         curr++;
         
-   
-    /* print first part of response */
+    
+    /* print first part of response 
     while (!(curr[-2] == '\n' && curr[0] == '\n'))
     {
         fprintf(wheretoprint, "%c", curr[0]);
         curr++;
     }
 
-    /* second read loop -- print out the rest of the response */
+    /* second read loop -- print out the rest of the response 
     fprintf(wheretoprint, "\n\nHTML RESPONSE BODY:\n\n");
     fprintf(wheretoprint, "%s", cut);
 
@@ -161,11 +186,17 @@ int main(int argc, char * argv[]) {
         buf[datalen] = '\0';
         fprintf(wheretoprint, "%s", buf);
         datalen = minet_read(sock, buf, BUFSIZE);
-    }
-
+    } */
+    
+    /* print first part of response */
+    write_n_bytes(wheretoprint,bptr,datalen);
+    
+    /* second read loop -- print out the rest of the response */
+    write_n_bytes(wheretoprint,bptr2,BUFSIZE - 3);
+    
     /*close socket and deinitialize */
     minet_close(sock);
-    return 0;
+    minet_deinit() //deinitialize 
 
     /*if (ok) {
         return 0;
@@ -187,5 +218,3 @@ int write_n_bytes(int fd, char * buf, int count) {
         return totalwritten;
     }
 }
-
-                                       
