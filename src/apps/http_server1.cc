@@ -30,21 +30,55 @@ int main(int argc,char *argv[])
     fprintf(stderr,"INVALID PORT NUMBER: %d; can't be < 1500\n",server_port);
     exit(-1);
   }
+      /* initialize minet */
+    if (toupper(*(argv[1])) == 'K') {
+        minet_init(MINET_KERNEL);
+    } else if (toupper(*(argv[1])) == 'U') {
+        minet_init(MINET_USER);
+    } else {
+        fprintf(stderr, "First argument must be k or u\n");
+        exit(-1);
+    }      
+      
+    FD_ZERO(&master);    // clear the master and temp sets
+    FD_ZERO(&read_fds);
 
   /* initialize and make socket */
+  if ((listener = minet_socket(SOCK_STREAM) == -1) {
+        perror("socket");
+        exit(-1);
+    }
 
   /* set server address*/
+  memset(&myaddr, 0);
+    
+    // bind
+    myaddr.sin_family = AF_INET;
+    myaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    myaddr.sin_port = htons(PORT);
 
   /* bind listening socket */
+  if (minet_bind(listener, &myaddr) < 0) {
+        perror("bind");
+        exit(-1);
+    }
 
   /* start listening */
-
+    if (minet_listen(listener, 10) < 0) {
+        perror("listen");
+        exit(-1);
+    }
   /* connection handling loop */
   while(1)
-  {
+    {
     /* handle connections */
-    rc = handle_connection(sock2);
-  }
+    memset(&sa2, 0, sizeof(sa2));
+    if ((sock2 = minet_accept(sock, &sa2)) < 0)
+    {
+        fail_and_exit(sock, "Error accepting a connection\n");
+    }
+        rc = handle_connection(sock2);
+    }
 }
 
 int handle_connection(int sock2)
@@ -122,4 +156,3 @@ int writenbytes(int fd,char *str,int size)
   else
     return totalwritten;
 }
-
