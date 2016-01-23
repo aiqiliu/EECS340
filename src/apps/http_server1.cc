@@ -11,11 +11,17 @@ int handle_connection(int);
 int writenbytes(int,char *,int);
 int readnbytes(int,char *,int);
 
+void error(int sock, char *msg) {
+    perror(msg);
+    minet_close(sock);
+    exit(-1);
+}
+
 int main(int argc,char *argv[])
 {
   int server_port;
-  int sock,sock2;
-  struct sockaddr_in sa,sa2;
+  int sock,sock2; 
+  struct sockaddr_in sa,sa2; //
   int rc;
 
   /* parse command line args */
@@ -42,27 +48,27 @@ int main(int argc,char *argv[])
   }      
 
   /* initialize and make socket */
-  if ((listener = minet_socket(SOCK_STREAM) == -1) {
+  if ((sock = minet_socket(SOCK_STREAM) == -1) {
     perror("socket");
     exit(-1);
   }
 
   /* set server address*/
-  memset(&myaddr, 0);
+  memset(&sa, 0, sizeof(sa));
     
   // bind
-  myaddr.sin_family = AF_INET;
-  myaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-  myaddr.sin_port = htons(PORT);
+  sa.sin_family = AF_INET;
+  sa.sin_addr.s_addr = htonl(INADDR_ANY);
+  sa.sin_port = htons(PORT);
 
   /* bind listening socket */
-  if (minet_bind(listener, &myaddr) < 0) {
+  if (minet_bind(sock, &myaddr) < 0) {
     perror("bind");
     exit(-1);
   }
 
   /* start listening */
-  if (minet_listen(listener, 10) < 0) {
+  if (minet_listen(sock, 10) < 0) {
     perror("listen");
     exit(-1);
   }
@@ -71,9 +77,9 @@ int main(int argc,char *argv[])
   while(1){
   /* handle connections */
     memset(&sa2, 0, sizeof(sa2));
-    if ((sock2 = minet_accept(sock, &sa2)) < 0)
+    if ((sock2 = minet_accept(sock, &sa2)) < 0) //puts the connecting socket's file descriptor into sock2 and address into &sa2
     {
-      fail_and_exit(sock, "Error accepting a connection\n");
+      error(sock, "Error accepting a connection\n");
     }
       rc = handle_connection(sock2);
     }
@@ -102,29 +108,80 @@ int handle_connection(int sock2)
   bool ok=true;
 
   /* first read loop -- get request and headers*/
+  if(minet_read(sock2, buf, BUFSIZE) < 0)
+  {
+    error(sock2, "Failed to read request \n");
+  }
 
   /* parse request to get file name */
   /* Assumption: this is a GET request and filename contains no spaces*/
 
-    /* try opening the file */
+  //MAY NEED TO CHECK GET, PATH FILE, AND HTTP VERSION ARE CORRECT
+  
+  int filenamelength = 0;
+  char *curr = buf[4]; //buf[4] is the start of the path right after GET 
+  while(curr != ' '){ //finds the character length of the path name
+    curr++;
+    filenamelength++;
+  }
+
+  strncpy(filename, buf[4], filenamelength);
+  if(filename == "")
+  {
+    printf("Must specify file name\n");
+    ok = false;
+  }
+
+  /* try opening the file */
+  char *path[FILENAMESIZE + 1];
+  memset(path, 0, FILENAMESIZE + 1);
+  getcwd(path, FILENAMESIZE); //saves current working directy into path
+  strncpy(path + strlen(path), filename, strlen(filename)); //combine the file directory with the filename
+  
+  char *filedata;
+  
+  if(stat(path, &filestat) < 0)//transfer info of path to filestat
+  {
+    ok = false;
+    printf("Error opening file \n");
+  } else {
+    datalen = filestat.st_size;
+    FILE *file = fopen(path, "r"); //read file at path
+    filedata = (char *)malloc(datalen); 
+    memset(filedata, 0, datalen);
+    fread(filedata, 1, datalen, file); //read file into filedata
+  }
 
   /* send response */
-  if (ok)
+  if (ok) 
   {
     /* send headers */
-
-    /* send file */
+    sprintf(ok_response, ok_response_f, datalen);
+    if (writenbytes(sock2, ok_response, strlen(ok_response)) < 0) {
+      error(sock2, "Failed to send response\n");
+     }
+    
+     /* send file */
+     if(writenbytes(sock2, filedata, datalen) < 0){
+       error(sock2, "Can't send file");
+      } else {
+        minet_close(sock2);
+        exit(0);
+      }
+  }  
+  else { // send error response
+    if(writenbytes(sock2, (char *)notok_response, strlen(notok_response)) < 0){
+      error(sock2, "Can't send notok_response");
+    } else {
+      minet_close(sock2);
+      exit(0);
+    } 
   }
-  else // send error response
-  {
-  }
-
-  /* close socket and free space */
-
-  if (ok)
-    return 0;
-  else
-    return -1;
+    
+  // close socket and free space //
+  minet_close(sock2);
+  free(filedata);
+  exit(-1);
 }
 
 int readnbytes(int fd,char *buf,int size)
@@ -154,3 +211,4 @@ int writenbytes(int fd,char *str,int size)
   else
     return totalwritten;
 }
+
