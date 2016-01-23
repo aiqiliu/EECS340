@@ -55,14 +55,12 @@ int main(int argc,char *argv[])
 
   /* set server address*/
   memset(&sa, 0, sizeof(sa));
-    
-  // bind
   sa.sin_family = AF_INET;
   sa.sin_addr.s_addr = htonl(INADDR_ANY);
   sa.sin_port = htons(PORT);
 
   /* bind listening socket */
-  if (minet_bind(sock, &myaddr) < 0) {
+  if (minet_bind(sock, &sa) < 0) {
     perror("bind");
     exit(-1);
   }

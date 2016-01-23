@@ -35,13 +35,29 @@ int main(int argc,char *argv[])
   }
 
   /* initialize and make socket */
+  if ((sock = minet_socket(SOCK_STREAM) == -1) {
+    perror("socket");
+    exit(-1);
+  }
 
   /* set server address*/
+  memset(&sa, 0, sizeof(sa));
+  sa.sin_family = AF_INET;
+  sa.sin_addr.s_addr = htonl(INADDR_ANY);
+  sa.sin_port = htons(PORT);
 
   /* bind listening socket */
+  if (minet_bind(sock, &sa) < 0) {
+    perror("bind");
+    exit(-1);
+  }
 
   /* start listening */
-
+  if (minet_listen(sock, 10) < 0) {
+    perror("listen");
+    exit(-1);
+  }
+  
   /* connection handling loop */
   while(1)
   {
