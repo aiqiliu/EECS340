@@ -1,4 +1,3 @@
-
 #include "minet_socket.h"
 #include <stdlib.h>
 #include <ctype.h>
@@ -6,6 +5,8 @@
 #include <string>
 
 #define BUFSIZE 1024
+
+using namespace std;
 
 int write_n_bytes(int fd, char * buf, int count);
 
@@ -67,7 +68,7 @@ int main(int argc, char * argv[]) {
     /* Hint: use gethostbyname() */
     site = gethostbyname(server_name);
     if(site == NULL){
-        error(sock, "ERROR, no such host as" + server_name + "\n");
+        error(sock, "ERROR, host does not exist\n");
     }
         
     /* set address */
@@ -82,14 +83,14 @@ int main(int argc, char * argv[]) {
     } 
     
     /* send request */
-   // req = (char *)malloc(strlen(server_path) + 15);
+    req = (char *)malloc(strlen(server_path) + 15); //Kevin made changes here
     sprintf(req, "GET %s HTTP/1.0\n\n", server_path);
-    if (write_n_bytes(sock, req, req.length())) < 0)
+    if (write_n_bytes(sock, req, strlen(req)) < 0) 
     {
-        // free(req);
+        free(req);
         error(sock, "Failed to write request\n");
     }
-    // free(req);
+    free(req);
     
     
     /* wait till socket can be read */
@@ -126,21 +127,20 @@ int main(int argc, char * argv[]) {
     memset(buf, 0, BUFSIZE);
     n = minet_read(sock, buf, BUFSIZE);
     if (n < 0){ 
-        error("ERROR reading from socket");
-        break;
+        error(sock, "ERROR reading from socket");
     }
     if(n==0) {
-        error("server connection closed.");
+        error(sock, "server connection closed.");
     }
     
     for(i = 0; i < BUFSIZE; i++){
        
         datalen = datalen + 1;
-        if(buf[i] = '\r' && buf[i+2] = '\r')
+        if(buf[i] == '\r' && buf[i+2] == '\r')
            break;
     }
 
-    bptr2 = buf[i+4]; // Points to the first non \n character in the second read loop.
+    bptr2 = buf + i + 4; //Points to the first non \n character in the second read loop.
     
     /* examine return code */
     //Skip "HTTP/1.0"
@@ -188,15 +188,18 @@ int main(int argc, char * argv[]) {
         datalen = minet_read(sock, buf, BUFSIZE);
     } */
     
+    // Kevin changed write_n_bytes to fprintf, NEED TO find a place to use write_n_bytes
     /* print first part of response */
-    write_n_bytes(wheretoprint,bptr,datalen);
+
+    fprintf(wheretoprint, "%.*s", datalen, bptr); //prints to file datalen chars starting from bptr
     
     /* second read loop -- print out the rest of the response */
-    write_n_bytes(wheretoprint,bptr2,BUFSIZE - 3);
+
+    fprintf(wheretoprint, "%.*s", BUFSIZE - 3, bptr2); //prints to file BUFSIZE-3 chars starting from bptr2
     
     /*close socket and deinitialize */
     minet_close(sock);
-    minet_deinit() //deinitialize 
+    minet_deinit(); //deinitialize 
 
     /*if (ok) {
         return 0;

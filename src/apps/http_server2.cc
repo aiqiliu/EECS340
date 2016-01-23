@@ -7,6 +7,8 @@
 #define BUFSIZE 1024
 #define FILENAMESIZE 100
 
+using namespace std;
+
 int handle_connection(int);
 int writenbytes(int,char *,int);
 int readnbytes(int,char *,int);
@@ -57,7 +59,7 @@ int main(int argc,char *argv[])
     perror("listen");
     exit(-1);
   }
-  
+
   /* connection handling loop */
   while(1)
   {

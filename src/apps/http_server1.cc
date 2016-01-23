@@ -7,6 +7,8 @@
 #define BUFSIZE 1024
 #define FILENAMESIZE 100
 
+using namespace std;
+
 int handle_connection(int);
 int writenbytes(int,char *,int);
 int readnbytes(int,char *,int);
@@ -16,6 +18,8 @@ void error(int sock, char *msg) {
     minet_close(sock);
     exit(-1);
 }
+
+// MUST IMPLEMENT TEST CASES CORRECTLY, ex. 404 ERROR
 
 int main(int argc,char *argv[])
 {
