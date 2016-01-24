@@ -184,6 +184,11 @@ int handle_connection(int sock2)
   minet_close(sock2);
   free(filedata);
   exit(-1);
+
+  if (ok)
+    return 0;
+  else
+    return -1;
 }
 
 int readnbytes(int fd,char *buf,int size)
