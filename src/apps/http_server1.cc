@@ -136,7 +136,7 @@ int handle_connection(int sock2)
   // strncpy(&filename, &buf[4], filenamelength);
   if(filename == "")
   {
-    printf("Must specify file name\n");
+    error(sock2, "Must specify file name\n"); //changed so it calls error to close socket
     ok = false;
   }
 
@@ -151,13 +151,13 @@ int handle_connection(int sock2)
   if(stat(path, &filestat) < 0)//transfer info of path to filestat
   {
     ok = false;
-    printf("Error opening file \n");
+    error(sock2, "Error opening file \n"); 
   } else {
     datalen = filestat.st_size;
     FILE *file = fopen(path, "r"); //read file at path
     filedata = (char *)malloc(datalen); 
     memset(filedata, 0, datalen);
-    fread(filedata, 1, datalen, file); //read file into filedata
+    fread(filedata, 1, datalen, file); //read datalen bytes of file into filedata
     //test case that prints out file path
     int ind = 0;
     while(path[ind] != '\0'){
@@ -171,22 +171,22 @@ int handle_connection(int sock2)
   {
     /* send headers */
     printf("entered ok");
-    sprintf(ok_response, ok_response_f, datalen);
+    sprintf(ok_response, ok_response_f, datalen); //stores formatted ok_response_f into ok_response
     if (writenbytes(sock2, ok_response, strlen(ok_response)) < 0) {
       error(sock2, "Failed to send response\n");
      }
     
-     /* send file */
-     if(writenbytes(sock2, filedata, datalen) < 0){
-       error(sock2, "Can't send file");
-      } else {
-        minet_close(sock2);
-        exit(0);
-      }
+    /* send file */
+    if(writenbytes(sock2, filedata, datalen) < 0){
+      error(sock2, "Can't send file\n");
+    } else {
+      minet_close(sock2);
+      exit(0);
+    }
   }  
   else { // send error response
     if(writenbytes(sock2, (char *)notok_response, strlen(notok_response)) < 0){
-      error(sock2, "Can't send notok_response");
+      error(sock2, "Can't send notok_response\n");
     } else {
       minet_close(sock2);
       exit(0);
