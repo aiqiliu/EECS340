@@ -11,6 +11,12 @@ int handle_connection(int);
 int writenbytes(int,char *,int);
 int readnbytes(int,char *,int);
 
+void error(int sock, char *msg) {
+    perror(msg);
+    minet_close(sock);
+    exit(-1);
+}
+
 int main(int argc,char *argv[])
 {
   int server_port;
