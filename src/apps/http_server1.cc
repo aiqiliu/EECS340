@@ -129,8 +129,9 @@ int handle_connection(int sock2)
     currIndex++;
     fnameindex++;
     curr = buf[currIndex];
-    //filenamelength++
+    filenamelength++;
   }
+  filename[fnameindex] = '\0';
 
   // strncpy(&filename, &buf[4], filenamelength);
   if(filename == "")
@@ -157,12 +158,19 @@ int handle_connection(int sock2)
     filedata = (char *)malloc(datalen); 
     memset(filedata, 0, datalen);
     fread(filedata, 1, datalen, file); //read file into filedata
+    //test case that prints out file path
+    int ind = 0;
+    while(path[ind] != '\0'){
+      printf("%c",path[ind]);
+      ind++;
+    }
   }
 
   /* send response */
   if (ok) 
   {
     /* send headers */
+    printf("entered ok");
     sprintf(ok_response, ok_response_f, datalen);
     if (writenbytes(sock2, ok_response, strlen(ok_response)) < 0) {
       error(sock2, "Failed to send response\n");
