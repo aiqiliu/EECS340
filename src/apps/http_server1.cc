@@ -52,7 +52,7 @@ int main(int argc,char *argv[])
   }      
 
   /* initialize and make socket */
-  if ((sock = minet_socket(SOCK_STREAM) == -1) {
+  if ((sock = minet_socket(SOCK_STREAM) == -1)) {
     perror("socket");
     exit(-1);
   }
@@ -61,7 +61,7 @@ int main(int argc,char *argv[])
   memset(&sa, 0, sizeof(sa));
   sa.sin_family = AF_INET;
   sa.sin_addr.s_addr = htonl(INADDR_ANY);
-  sa.sin_port = htons(PORT);
+  sa.sin_port = htons(server_port);
 
   /* bind listening socket */
   if (minet_bind(sock, &sa) < 0) {
@@ -121,13 +121,15 @@ int handle_connection(int sock2)
   //MAY NEED TO CHECK GET, PATH FILE, AND HTTP VERSION ARE CORRECT
   
   int filenamelength = 0;
-  char *curr = buf[4]; //buf[4] is the start of the path right after GET 
+  char curr = buf[4]; //buf[4] is the start of the path right after GET 
+  int currIndex = 4;
   while(curr != ' '){ //finds the character length of the path name
-    curr++;
+    currIndex++;
+    curr = buf[currIndex];
     filenamelength++;
   }
 
-  strncpy(filename, buf[4], filenamelength);
+  strncpy(&filename, &buf[4], filenamelength);
   if(filename == "")
   {
     printf("Must specify file name\n");
@@ -135,7 +137,7 @@ int handle_connection(int sock2)
   }
 
   /* try opening the file */
-  char *path[FILENAMESIZE + 1];
+  char path[FILENAMESIZE + 1];
   memset(path, 0, FILENAMESIZE + 1);
   getcwd(path, FILENAMESIZE); //saves current working directy into path
   strncpy(path + strlen(path), filename, strlen(filename)); //combine the file directory with the filename
