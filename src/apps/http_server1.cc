@@ -52,7 +52,7 @@ int main(int argc,char *argv[])
   }      
 
   /* initialize and make socket */
-  if ((sock = minet_socket(SOCK_STREAM) == -1)) {
+  if ((sock = minet_socket(SOCK_STREAM)) == -1) {
     perror("socket");
     exit(-1);
   }
