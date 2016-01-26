@@ -1,3 +1,5 @@
+// Issues: The server gives an error that bind address already in use?
+
 #include "minet_socket.h"
 #include <stdlib.h>
 #include <ctype.h>
@@ -6,8 +8,6 @@
 
 #define BUFSIZE 1024
 #define FILENAMESIZE 100
-
-using namespace std;
 
 int handle_connection(int);
 int writenbytes(int,char *,int);

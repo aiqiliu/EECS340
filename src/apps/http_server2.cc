@@ -7,8 +7,6 @@
 #define BUFSIZE 1024
 #define FILENAMESIZE 100
 
-using namespace std;
-
 int handle_connection(int);
 int writenbytes(int,char *,int);
 int readnbytes(int,char *,int);
@@ -98,29 +96,98 @@ int handle_connection(int sock2)
   char *notok_response = "HTTP/1.0 404 FILE NOT FOUND\r\n"\
                          "Content-type: text/html\r\n\r\n"\
                          "<html><body bgColor=black text=white>\n"\
-                         "<h2>404 FILE NOT FOUND</h2>\n"\
+                         "<h2>404 FILE NOT FOUND</h2>\n"
                          "</body></html>\n";
   bool ok=true;
 
   /* first read loop -- get request and headers*/
+  if(minet_read(sock2, buf, BUFSIZE) < 0)
+  {
+    error(sock2, "Failed to read request \n");
+  }
 
   /* parse request to get file name */
   /* Assumption: this is a GET request and filename contains no spaces*/
 
-    /* try opening the file */
+  //MAY NEED TO CHECK GET, PATH FILE, AND HTTP VERSION ARE CORRECT
+  
+  int filenamelength = 0;
+  char curr = buf[4]; //buf[4] is the start of the path right after GET 
+  int currIndex = 4;
+  int fnameindex = 0;
+  while(curr != ' '){ //finds the character length of the path name
+    filename[fnameindex] = buf[currIndex];
+    currIndex++;
+    fnameindex++;
+    curr = buf[currIndex];
+    filenamelength++;
+  }
+  filename[fnameindex] = '\0';
+
+  // strncpy(&filename, &buf[4], filenamelength);
+  if(filename == "")
+  {
+    error(sock2, "Must specify file name\n"); //changed so it calls error to close socket
+    ok = false;
+  }
+
+  /* try opening the file */
+  char path[FILENAMESIZE + 1];
+  memset(path, 0, FILENAMESIZE + 1);
+  getcwd(path, FILENAMESIZE); //saves current working directy into path
+  strncpy(path + strlen(path), filename, strlen(filename)); //combine the file directory with the filename
+  
+  char *filedata;
+  
+  if(stat(path, &filestat) < 0)//transfer info of path to filestat
+  {
+    ok = false;
+    error(sock2, "Error opening file \n"); 
+  } else {
+    datalen = filestat.st_size;
+    FILE *file = fopen(path, "r"); //read file at path
+    filedata = (char *)malloc(datalen); 
+    memset(filedata, 0, datalen);
+    fread(filedata, 1, datalen, file); //read datalen bytes of file into filedata
+    //test case that prints out file path
+    int ind = 0;
+    while(path[ind] != '\0'){
+      printf("%c",path[ind]);
+      ind++;
+    }
+  }
 
   /* send response */
-  if (ok)
+  if (ok) 
   {
     /* send headers */
-
+    printf("entered ok");
+    sprintf(ok_response, ok_response_f, datalen); //stores formatted ok_response_f into ok_response
+    if (writenbytes(sock2, ok_response, strlen(ok_response)) < 0) {
+      error(sock2, "Failed to send response\n");
+     }
+    
     /* send file */
+    if(writenbytes(sock2, filedata, datalen) < 0){
+      error(sock2, "Can't send file\n");
+    } else {
+      minet_close(sock2);
+      exit(0);
+    }
+  }  
+  else { // send error response
+    if(writenbytes(sock2, (char *)notok_response, strlen(notok_response)) < 0){
+      error(sock2, "Can't send notok_response\n");
+    } else {
+      minet_close(sock2);
+      exit(0);
+    } 
   }
-  else	// send error response
-  {
-  }
-
-  /* close socket and free space */
+    
+  // close socket and free space //
+  minet_close(sock2);
+  free(filedata);
+  exit(-1);
 
   if (ok)
     return 0;

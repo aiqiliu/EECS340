@@ -6,8 +6,6 @@
 
 #define BUFSIZE 1024
 
-using namespace std;
-
 int write_n_bytes(int fd, char * buf, int count);
 
 void error(int sock, char *msg) {
@@ -122,26 +120,39 @@ int main(int argc, char * argv[]) {
     /* first read loop -- read headers */
     
     int n, i;
-    bptr = buf; // pointer to buf, needed to be passed as an argument to wrinte_n_bytes
+    bptr = buf; // pointer to buf, needed to be passed as an argument to write_n_bytes
 
     memset(buf, 0, BUFSIZE);
-    n = minet_read(sock, buf, BUFSIZE);
+    n = minet_read(sock, buf, BUFSIZE); //reading data from sock into buf
     if (n < 0){ 
         error(sock, "ERROR reading from socket");
     }
-    if(n==0) {
+    /*if(n==0) {
         error(sock, "server connection closed.");
-    }
+    } */
     
-    for(i = 0; i < BUFSIZE; i++){
-       
-        datalen = datalen + 1;
-        if(buf[i] == '\r' && buf[i+2] == '\r')
+    /* for(i = 0; i < BUFSIZE; i++){
+        if(buf[i] == '\r' && buf[i+2] == '\r') //trying to locate the end of the header
            break;
+    } */
+
+    int headerlen = 0;
+    int ind = 0;
+    while(bptr[ind] != '\0'){ //finds the length of the header
+      headerlen++;
+      //printf("%c",bptr[ind]);
+      ind++;
     }
 
-    bptr2 = buf + i + 4; //Points to the first non \n character in the second read loop.
-    
+    bptr2 = bptr + headerlen; //Points to the first non \n character in the second read loop. 
+
+    int bodylen = 0;
+    int sec_ind = 0;
+    while(bptr2[sec_ind] != '\0'){ //finds the length of the header
+      bodylen++;
+      sec_ind++;
+    }
+
     /* examine return code */
     //Skip "HTTP/1.0"
     //remove the '\0'
@@ -190,12 +201,13 @@ int main(int argc, char * argv[]) {
     
     // Kevin changed write_n_bytes to fprintf, NEED TO find a place to use write_n_bytes
     /* print first part of response */
-
-    fprintf(wheretoprint, "%.*s", datalen, bptr); //prints to file datalen chars starting from bptr
+    if (rc != 200)
+        fprintf(wheretoprint, "%.*s", headerlen, bptr); //prints to file datalen chars starting from bptr
+    
     
     /* second read loop -- print out the rest of the response */
-
-    fprintf(wheretoprint, "%.*s", BUFSIZE - 3, bptr2); //prints to file BUFSIZE-3 chars starting from bptr2
+    if (rc == 200)
+        fprintf(wheretoprint, "%.*s", bodylen, bptr2); //prints to file BUFSIZE-3 chars starting from bptr2
     
     /*close socket and deinitialize */
     minet_close(sock);
