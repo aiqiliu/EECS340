@@ -37,7 +37,7 @@ int main(int argc,char *argv[])
   }
 
   /* initialize and make socket */
-  if ((sock = minet_socket(SOCK_STREAM) == -1) {
+  if ((sock = minet_socket(SOCK_STREAM) == -1)) {
     perror("socket");
     exit(-1);
   }
@@ -46,7 +46,7 @@ int main(int argc,char *argv[])
   memset(&sa, 0, sizeof(sa));
   sa.sin_family = AF_INET;
   sa.sin_addr.s_addr = htonl(INADDR_ANY);
-  sa.sin_port = htons(PORT);
+  sa.sin_port = htons(server_port);
 
   /* bind listening socket */
   if (minet_bind(sock, &sa) < 0) {
