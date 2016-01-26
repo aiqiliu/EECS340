@@ -144,7 +144,7 @@ int main(int argc, char * argv[]) {
       ind++;
     }
 
-    bptr2 = bptr + headerlen; //Points to the first non \n character in the second read loop. 
+    bptr2 = bptr + headerlen + 1; //Points to the first non \n character in the second read loop. 
 
     int bodylen = 0;
     int sec_ind = 0;
@@ -201,13 +201,11 @@ int main(int argc, char * argv[]) {
     
     // Kevin changed write_n_bytes to fprintf, NEED TO find a place to use write_n_bytes
     /* print first part of response */
-    if (rc != 200)
-        fprintf(wheretoprint, "%.*s", headerlen, bptr); //prints to file datalen chars starting from bptr
+    fprintf(wheretoprint, "%.*s", headerlen, bptr); //prints to file datalen chars starting from bptr
     
-    
+
     /* second read loop -- print out the rest of the response */
-    if (rc == 200)
-        fprintf(wheretoprint, "%.*s", bodylen, bptr2); //prints to file BUFSIZE-3 chars starting from bptr2
+    fprintf(wheretoprint, "%.*s", bodylen, bptr2); //prints to file BUFSIZE-3 chars starting from bptr2
     
     /*close socket and deinitialize */
     minet_close(sock);
