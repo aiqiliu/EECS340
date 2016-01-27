@@ -40,6 +40,16 @@ int main(int argc,char *argv[])
     exit(-1);
   }
 
+   /* initialize minet */
+  if (toupper(*(argv[1])) == 'K') {
+    minet_init(MINET_KERNEL);
+  } else if (toupper(*(argv[1])) == 'U') {
+    minet_init(MINET_USER);
+  } else {
+    fprintf(stderr, "First argument must be k or u\n");
+    exit(-1);
+  }      
+
   /* initialize and make socket */
   if ((sock = minet_socket(SOCK_STREAM)) == -1) {
     perror("socket");
@@ -83,23 +93,25 @@ int main(int argc,char *argv[])
 
     /* process sockets that are ready */
     for(int i = 0; i < maxfd + 1; i++) {
+      if (FD_ISSET(i, &readlist) {
       /* for the accept socket, add accepted connection to connections */
-      if (i == sock)
-      {
-        memset(&sa2, 0, sizeof(sa2));
-        if ((sock2 = minet_accept(sock, &sa2)) < 0) //puts the connecting socket's file descriptor into sock2 and address into &sa2
+        if (i == sock)
         {
-          error(sock, "Error accepting a connection\n");
+          memset(&sa2, 0, sizeof(sa2));
+          if ((sock2 = minet_accept(sock, &sa2)) < 0) //puts the connecting socket's file descriptor into sock2 and address into &sa2
+          {
+            error(sock, "Error accepting a connection\n");
+          }
+          FD_SET(sock2, &connections); //adds the accepted connecting socket (sock2) into the list of connections
+          if (maxfd < sock2)
+            maxfd = sock2; //re-adjusts value of maxfd accordingly
         }
-        FD_SET(sock2, &connections); //adds the accepted connecting socket (sock2) into the list of connections
-        if (maxfd < sock2)
-          maxfd = sock2; //re-adjusts value of maxfd accordingly
-      }
-      else if (FD_ISSET(i, &readlist))
-      /* for a connection socket, handle the connection */
-      {
-	      rc = handle_connection(i);
-        FD_CLR(i, &connections); //removes socket i from connections
+        else if (FD_ISSET(i, &readlist))
+        /* for a connection socket, handle the connection */
+        {
+  	      rc = handle_connection(i);
+          FD_CLR(i, &connections); //removes socket i from connections
+        }
       }
     }
   }
