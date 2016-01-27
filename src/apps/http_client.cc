@@ -4,7 +4,7 @@
 #include <iostream>
 #include <string>
 
-#define BUFSIZE 1024
+#define BUFSIZE 8192
 
 int write_n_bytes(int fd, char * buf, int count);
 
@@ -97,7 +97,7 @@ int main(int argc, char * argv[]) {
     FD_SET(sock, &set); //sets and activates sock in the set of file descriptors
     
     int maxval = 0; //check this to see if we need maxval
-    maxval = (maxval > sock) ? maxval : sock;
+    maxval = (maxval > sock) ? maxval : sock; //sets maxval to be the greatest integer of all sockets
     if (minet_select(maxval+1, &set, NULL, NULL, NULL) < 1) { //sock?
        error(sock, "Didn't select socket\n");
     }
@@ -211,11 +211,11 @@ int main(int argc, char * argv[]) {
     minet_close(sock);
     minet_deinit(); //deinitialize 
 
-    /*if (ok) {
+    if (ok) {
         return 0;
     } else {
         return -1;
-    }*/
+    }
 }
 int write_n_bytes(int fd, char * buf, int count) {
     int rc = 0;
