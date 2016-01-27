@@ -91,7 +91,7 @@ int main(int argc,char *argv[])
         {
           error(sock, "Error accepting a connection\n");
         }
-        FD_SET(sock2, &connections) //adds the accepted connecting socket (sock2) into the list of connections
+        FD_SET(sock2, &connections); //adds the accepted connecting socket (sock2) into the list of connections
         if (maxfd < sock2)
           maxfd = sock2; //re-adjusts value of maxfd accordingly
       }
