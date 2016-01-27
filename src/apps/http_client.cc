@@ -57,8 +57,8 @@ int main(int argc, char * argv[]) {
     }
 
     /* create socket */
-    sock = minet_socket(SOCK_STREAM); //new
-    if (sock <0){ //DELETE LATER???
+    sock = minet_socket(SOCK_STREAM); //creates a socket with TCP protocol
+    if (sock <0){ 
         error(sock, "Error opening the socket");
     }
     
@@ -76,14 +76,14 @@ int main(int argc, char * argv[]) {
     sa.sin_port = htons(server_port);
     
     /* connect socket */
-    if (minet_connect(sock, &sa) != 0){ //new
+    if (minet_connect(sock, &sa) != 0){ //connects sock to server
         error(sock, "Did not connect to socket\n");
     } 
     
     /* send request */
-    req = (char *)malloc(strlen(server_path) + 15); //Kevin made changes here
+    req = (char *)malloc(strlen(server_path) + 15); 
     sprintf(req, "GET %s HTTP/1.0\n\n", server_path);
-    if (write_n_bytes(sock, req, strlen(req)) < 0) 
+    if (write_n_bytes(sock, req, strlen(req)) < 0)  //sends the request to sock
     {
         free(req);
         error(sock, "Failed to write request\n");
@@ -96,27 +96,12 @@ int main(int argc, char * argv[]) {
     FD_ZERO(&set); //zeroes out all of the file descriptors
     FD_SET(sock, &set); //sets and activates sock in the set of file descriptors
     
-    int maxval = 0; //check this to see if we need maxval
+    int maxval = 0; 
     maxval = (maxval > sock) ? maxval : sock; //sets maxval to be the greatest integer of all sockets
-    if (minet_select(maxval+1, &set, NULL, NULL, NULL) < 1) { //sock?
+    if (minet_select(maxval+1, &set, NULL, NULL, NULL) < 1) {
        error(sock, "Didn't select socket\n");
     }
- /*int maxval =0;
-    maxval = (maxval>sock)? maxval: sock;
-    for(;;) {
-        FD_SET(sock, &set);    
-        if (select(maxval+1, &set, NULL, NULL, NULL) == -1){
-            perror("Select");
-            exit(1);
-        }
-    }*/
     
-    
-    /* first read loop -- read headers
-    if (minet_read(sock, buf, BUFSIZE) < 0)
-    {
-        error(sock, "Failed to read\n");
-    }
     /* first read loop -- read headers */
     
     int n, i;
@@ -127,17 +112,9 @@ int main(int argc, char * argv[]) {
     if (n < 0){ 
         error(sock, "ERROR reading from socket");
     }
-    /*if(n==0) {
-        error(sock, "server connection closed.");
-    } */
-    
-    /* for(i = 0; i < BUFSIZE; i++){
-        if(buf[i] == '\r' && buf[i+2] == '\r') //trying to locate the end of the header
-           break;
-    } */
 
-    int headerlen = 0;
-    int ind = 0;
+    int headerlen = 0; //length of the header
+    int ind = 0; //index to be iterated
     while(bptr[ind] != '\0'){ //finds the length of the header
       headerlen++;
       //printf("%c",bptr[ind]);
@@ -146,8 +123,8 @@ int main(int argc, char * argv[]) {
 
     bptr2 = bptr + headerlen + 1; //Points to the first non \n character in the second read loop. 
 
-    int bodylen = 0;
-    int sec_ind = 0;
+    int bodylen = 0; //length of the body
+    int sec_ind = 0; //index to be iterated
     while(bptr2[sec_ind] != '\0'){ //finds the length of the header
       bodylen++;
       sec_ind++;
@@ -160,46 +137,26 @@ int main(int argc, char * argv[]) {
 
     char* curr = buf;
 
-    while (curr[-1] != ' ')
+    while (curr[-1] != ' ') 
         curr++;
 
     char num[4];
     strncpy(num, curr, 3);
     num[4] = '\0';
 
-    rc = atoi(num);
+    rc = atoi(num); //gets the return code
 
     if (rc != 200){
         wheretoprint = stderr;
         ok = false;
     }
 
-    fprintf(wheretoprint, "Status: %d\n\n", rc);
+    fprintf(wheretoprint, "Status: %d\n\n", rc); //prints the Status code
 
     //increment to the output after the status
     while (curr[-1] != '\n')
         curr++;
-        
     
-    /* print first part of response 
-    while (!(curr[-2] == '\n' && curr[0] == '\n'))
-    {
-        fprintf(wheretoprint, "%c", curr[0]);
-        curr++;
-    }
-
-    /* second read loop -- print out the rest of the response 
-    fprintf(wheretoprint, "\n\nHTML RESPONSE BODY:\n\n");
-    fprintf(wheretoprint, "%s", cut);
-
-    datalen = minet_read(sock, buf, BUFSIZE);
-    while (datalen > 0) {
-        buf[datalen] = '\0';
-        fprintf(wheretoprint, "%s", buf);
-        datalen = minet_read(sock, buf, BUFSIZE);
-    } */
-    
-    // Kevin changed write_n_bytes to fprintf, NEED TO find a place to use write_n_bytes
     /* print first part of response */
     fprintf(wheretoprint, "%.*s", headerlen, bptr); //prints to file datalen chars starting from bptr
     

@@ -1,4 +1,6 @@
 // Issues: The server gives an error that bind address already in use?
+// Can we change BUFSIZE?
+// The if statements seem to not work (if rc==200, don't show header?)
 
 #include "minet_socket.h"
 #include <stdlib.h>
@@ -25,7 +27,7 @@ int main(int argc,char *argv[])
 {
   int server_port;
   int sock,sock2; 
-  struct sockaddr_in sa,sa2; //
+  struct sockaddr_in sa,sa2; 
   int rc;
 
   /* parse command line args */
@@ -117,23 +119,20 @@ int handle_connection(int sock2)
 
   /* parse request to get file name */
   /* Assumption: this is a GET request and filename contains no spaces*/
-
-  //MAY NEED TO CHECK GET, PATH FILE, AND HTTP VERSION ARE CORRECT
   
-  int filenamelength = 0;
+  int filenamelength = 0; //length of the file name
   char curr = buf[4]; //buf[4] is the start of the path right after GET 
-  int currIndex = 4;
-  int fnameindex = 0;
-  while(curr != ' '){ //finds the character length of the path name
+  int currIndex = 4; //current index
+  int fnameindex = 0; //index to track the end of the file name
+  while(curr != ' '){ //iterates to the end of the file name
     filename[fnameindex] = buf[currIndex];
     currIndex++;
     fnameindex++;
     curr = buf[currIndex];
     filenamelength++;
   }
-  filename[fnameindex] = '\0';
+  filename[fnameindex] = '\0'; //put a '\0' at the end of the filename to show it is the end
 
-  // strncpy(&filename, &buf[4], filenamelength);
   if(filename == "")
   {
     error(sock2, "Must specify file name\n"); //changed so it calls error to close socket
@@ -153,31 +152,24 @@ int handle_connection(int sock2)
     ok = false;
     error(sock2, "Error opening file \n"); 
   } else {
-    datalen = filestat.st_size;
-    FILE *file = fopen(path, "r"); //read file at path
+    datalen = filestat.st_size; //datalen is the length of the data
+    FILE *file = fopen(path, "r"); //read file at path and stores into file
     filedata = (char *)malloc(datalen); 
     memset(filedata, 0, datalen);
     fread(filedata, 1, datalen, file); //read datalen bytes of file into filedata
-    //test case that prints out file path
-    int ind = 0;
-    while(path[ind] != '\0'){
-      printf("%c",path[ind]);
-      ind++;
-    }
   }
 
   /* send response */
   if (ok) 
   {
     /* send headers */
-    printf("entered ok");
     sprintf(ok_response, ok_response_f, datalen); //stores formatted ok_response_f into ok_response
-    if (writenbytes(sock2, ok_response, strlen(ok_response)) < 0) {
+    if (writenbytes(sock2, ok_response, strlen(ok_response)) < 0) { //writes ok_response to sock2
       error(sock2, "Failed to send response\n");
      }
     
     /* send file */
-    if(writenbytes(sock2, filedata, datalen) < 0){
+    if(writenbytes(sock2, filedata, datalen) < 0){ //writes filedata to sock2
       error(sock2, "Can't send file\n");
     } else {
       minet_close(sock2);

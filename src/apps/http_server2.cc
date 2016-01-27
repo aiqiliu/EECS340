@@ -93,7 +93,7 @@ int main(int argc,char *argv[])
 
     /* process sockets that are ready */
     for(int i = 0; i < maxfd + 1; i++) {
-      if (FD_ISSET(i, &readlist)) {
+      if (FD_ISSET(i, &readlist)) { //if socket i is in readlist, go on
       /* for the accept socket, add accepted connection to connections */
         if (i == sock)
         {
@@ -148,13 +148,13 @@ int handle_connection(int sock2)
   /* parse request to get file name */
   /* Assumption: this is a GET request and filename contains no spaces*/
 
-  //MAY NEED TO CHECK GET, PATH FILE, AND HTTP VERSION ARE CORRECT
+  //MAY NEED TO CHECK IF GET, PATH FILE, AND HTTP VERSION ARE CORRECT
   
   int filenamelength = 0;
   char curr = buf[4]; //buf[4] is the start of the path right after GET 
-  int currIndex = 4;
-  int fnameindex = 0;
-  while(curr != ' '){ //finds the character length of the path name
+  int currIndex = 4; //current index
+  int fnameindex = 0; //index to track the end of the file
+  while(curr != ' '){ //iterate until the end of the file name
     filename[fnameindex] = buf[currIndex];
     currIndex++;
     fnameindex++;
@@ -163,7 +163,6 @@ int handle_connection(int sock2)
   }
   filename[fnameindex] = '\0';
 
-  // strncpy(&filename, &buf[4], filenamelength);
   if(filename == "")
   {
     error(sock2, "Must specify file name\n"); //changed so it calls error to close socket
@@ -188,12 +187,6 @@ int handle_connection(int sock2)
     filedata = (char *)malloc(datalen); 
     memset(filedata, 0, datalen);
     fread(filedata, 1, datalen, file); //read datalen bytes of file into filedata
-    //test case that prints out file path
-    int ind = 0;
-    while(path[ind] != '\0'){
-      printf("%c",path[ind]);
-      ind++;
-    }
   }
 
   /* send response */
@@ -202,12 +195,12 @@ int handle_connection(int sock2)
     /* send headers */
     printf("entered ok");
     sprintf(ok_response, ok_response_f, datalen); //stores formatted ok_response_f into ok_response
-    if (writenbytes(sock2, ok_response, strlen(ok_response)) < 0) {
+    if (writenbytes(sock2, ok_response, strlen(ok_response)) < 0) { //writes ok_response to sock2
       error(sock2, "Failed to send response\n");
      }
     
     /* send file */
-    if(writenbytes(sock2, filedata, datalen) < 0){
+    if(writenbytes(sock2, filedata, datalen) < 0){ //writes filedata to sock2
       error(sock2, "Can't send file\n");
     } else {
       minet_close(sock2);
