@@ -4,7 +4,7 @@
 #include <iostream>
 #include <string>
 
-#define BUFSIZE 8192
+#define BUFSIZE 81929
 
 int write_n_bytes(int fd, char * buf, int count);
 
@@ -205,7 +205,7 @@ int main(int argc, char * argv[]) {
     
 
     /* second read loop -- print out the rest of the response */
-    fprintf(wheretoprint, "%.*s", bodylen, bptr2); //prints to file BUFSIZE-3 chars starting from bptr2
+    fprintf(wheretoprint, "%.*s", BUFSIZE-3, bptr2); //prints to file BUFSIZE-3 chars starting from bptr2
     
     /*close socket and deinitialize */
     minet_close(sock);

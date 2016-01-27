@@ -93,7 +93,7 @@ int main(int argc,char *argv[])
 
     /* process sockets that are ready */
     for(int i = 0; i < maxfd + 1; i++) {
-      if (FD_ISSET(i, &readlist) {
+      if (FD_ISSET(i, &readlist)) {
       /* for the accept socket, add accepted connection to connections */
         if (i == sock)
         {
