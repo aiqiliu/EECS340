@@ -103,31 +103,10 @@ int main(int argc, char * argv[]) {
     }
     
     /* first read loop -- read headers */
-    
-    int n, i;
-    bptr = buf; // pointer to buf, needed to be passed as an argument to write_n_bytes
-
     memset(buf, 0, BUFSIZE);
-    n = minet_read(sock, buf, BUFSIZE); //reading data from sock into buf
+    int n = minet_read(sock, buf, BUFSIZE); //reading data from sock into buf
     if (n < 0){ 
         error(sock, "ERROR reading from socket");
-    }
-
-    int headerlen = 0; //length of the header
-    int ind = 0; //index to be iterated
-    while(bptr[ind] != '\0'){ //finds the length of the header
-      headerlen++;
-      //printf("%c",bptr[ind]);
-      ind++;
-    }
-
-    bptr2 = bptr + headerlen + 1; //Points to the first non \n character in the second read loop. 
-
-    int bodylen = 0; //length of the body
-    int sec_ind = 0; //index to be iterated
-    while(bptr2[sec_ind] != '\0'){ //finds the length of the header
-      bodylen++;
-      sec_ind++;
     }
 
     /* examine return code */
@@ -135,13 +114,13 @@ int main(int argc, char * argv[]) {
     //remove the '\0'
     // Normal reply has return code 200
 
-    char* curr = buf;
+    bptr = buf;
 
-    while (curr[-1] != ' ') 
-        curr++;
+    while (bptr[-1] != ' ') 
+        bptr++;
 
     char num[4];
-    strncpy(num, curr, 3);
+    strncpy(num, bptr, 3);
     num[4] = '\0';
 
     rc = atoi(num); //gets the return code
@@ -154,15 +133,23 @@ int main(int argc, char * argv[]) {
     fprintf(wheretoprint, "Status: %d\n\n", rc); //prints the Status code
 
     //increment to the output after the status
-    while (curr[-1] != '\n')
-        curr++;
-    
+    while (bptr[-1] != '\n'){
+        bptr++;
+    }    
+
+    bptr = buf;
+    int headerlen = 0;
+    while (!(bptr[-2] == '\n' && bptr[0] == '\n')) {
+      headerlen++;
+      bptr++;
+    }
     /* print first part of response */
-    fprintf(wheretoprint, "%.*s", headerlen, bptr); //prints to file datalen chars starting from bptr
-    
+    if (rc != 200){ //does not print header if rc is 200
+      fprintf(wheretoprint, "%.*s", headerlen, buf); //prints to file datalen chars starting from bptr
+    }
 
     /* second read loop -- print out the rest of the response */
-    fprintf(wheretoprint, "%.*s", BUFSIZE-3, bptr2); //prints to file BUFSIZE-3 chars starting from bptr2
+    fprintf(wheretoprint, "%.*s", BUFSIZE-3, bptr); //prints to file BUFSIZE-3 chars starting from bptr2
     
     /*close socket and deinitialize */
     minet_close(sock);
