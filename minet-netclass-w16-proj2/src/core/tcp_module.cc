@@ -51,28 +51,28 @@ int main(int argc, char *argv[])
       MinetSendToMonitor(MinetMonitoringEvent("Unknown event ignored."));
     // if we received a valid event from Minet, do processing
     } else {
-      cerr << "butts butts butts" << endl;
+      cerr << "invalid event from Minet" << endl;
       //  Data from the IP layer below  //
       if (event.handle==mux) {
-	Packet p;
-	MinetReceive(mux,p);
-	unsigned tcphlen=TCPHeader::EstimateTCPHeaderLength(p);
-	cerr << "estimated header len="<<tcphlen<<"\n";
-	p.ExtractHeaderFromPayload<TCPHeader>(tcphlen);
-	IPHeader ipl=p.FindHeader(Headers::IPHeader);
-	TCPHeader tcph=p.FindHeader(Headers::TCPHeader);
+        Packet p;
+        MinetReceive(mux,p);
+        unsigned tcphlen=TCPHeader::EstimateTCPHeaderLength(p);
+        cerr << "estimated header len="<<tcphlen<<"\n";
+        p.ExtractHeaderFromPayload<TCPHeader>(tcphlen);
+        IPHeader ipl=p.FindHeader(Headers::IPHeader);
+        TCPHeader tcph=p.FindHeader(Headers::TCPHeader);
 
-	cerr << "TCP Packet: IP Header is "<<ipl<<" and ";
-	cerr << "TCP Header is "<<tcph << " and ";
+        cerr << "TCP Packet: IP Header is "<<ipl<<" and ";
+        cerr << "TCP Header is "<<tcph << " and ";
 
-	cerr << "Checksum is " << (tcph.IsCorrectChecksum(p) ? "VALID" : "INVALID");
-	
+        cerr << "Checksum is " << (tcph.IsCorrectChecksum(p) ? "VALID" : "INVALID");
+        
       }
-      //  Data from the Sockets layer above  //
+          //  Data from the Sockets layer above  //
       if (event.handle==sock) {
-	SockRequestResponse s;
-	MinetReceive(sock,s);
-	cerr << "Received Socket Request:" << s << endl;
+        SockRequestResponse s;
+        MinetReceive(sock,s);
+        cerr << "Received Socket Request:" << s << endl;
       }
     }
   }

@@ -1,0 +1,9 @@
+#! /bin/bash
+#quick git pushing
+
+echo "Enter commit message: "
+$m
+
+git add .
+git commit -m "m"
+git push
