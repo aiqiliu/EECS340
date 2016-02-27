@@ -10,32 +10,97 @@
 #include <fcntl.h>
 #include <errno.h>
 
-
 #include <iostream>
+#include <algorithm>
 
 #include "Minet.h"
+#include "tcpstate.h"
 
 
 using std::cout;
 using std::endl;
 using std::cerr;
 using std::string;
+using std::cin;
+using std::min;
+using std::max;
 
+// ======================================== //
+//              CONST & MACROS              //
+// ======================================== //
+
+#define MAX_TRIES 5
+#define MSS 536
+#define TIMEOUT 10
+#define GBN MSS*16
+#define RTT 5
+
+#define RECV_BUF_SIZE(state) (state.TCP_BUFFER_SIZE - state.RecvBuffer.GetSize())
+#define SEND_BUF_SIZE(state) (state.TCP_BUFFER_SIZE - state.SendBuffer.GetSize())
+
+// ======================================== //
+//                  HELPERS                 //
+// ======================================== //
+Packet MakePacket(Buffer data, Connection conn, unsigned int seq_n, unsigned int ack_n, size_t win_size, unsigned char flag)
+{
+  // Make Packet
+  unsigned size = MIN_MACRO(IP_PACKET_MAX_LENGTH-TCP_HEADER_MAX_LENGTH, data.GetSize());
+  Packet send_pack(data.ExtractFront(size));
+
+  // Make and push IP header
+  IPHeader send_ip_h;
+  send_ip_h.SetProtocol(IP_PROTO_TCP);
+  send_ip_h.SetSourceIP(conn.src);
+  send_ip_h.SetDestIP(conn.dest);
+  send_ip_h.SetTotalLength(size + TCP_HEADER_BASE_LENGTH + IP_HEADER_BASE_LENGTH);
+  send_pack.PushFrontHeader(send_ip_h);
+
+  // Make and push TCP header
+  TCPHeader send_tcp_h;
+  send_tcp_h.SetSourcePort(conn.srcport, send_pack);
+  send_tcp_h.SetDestPort(conn.destport, send_pack);
+  send_tcp_h.SetHeaderLen(TCP_HEADER_BASE_LENGTH/4, send_pack);
+  send_tcp_h.SetFlags(flag, send_pack);
+  send_tcp_h.SetWinSize(win_size, send_pack); // to fix
+  send_tcp_h.SetSeqNum(seq_n, send_pack);
+  if (IS_ACK(flag))
+  {
+    send_tcp_h.SetAckNum(ack_n, send_pack);
+  }
+  send_tcp_h.RecomputeChecksum(send_pack);
+  send_pack.PushBackHeader(send_tcp_h);
+
+  cerr << "== MAKING PACKET ==" << endl;
+  cerr << send_ip_h <<"\n";
+  cerr << send_tcp_h << "\n";
+  cerr << send_pack << endl;
+
+  return send_pack;
+}
+
+
+// ======================================== //
+//                   MAIN                   //
+// ======================================== //
 int main(int argc, char *argv[])
 {
   MinetHandle mux, sock;
+  srand(time(NULL)); // generate seeds
+  ConnectionList<TCPState> clist;
 
   MinetInit(MINET_TCP_MODULE);
 
-  mux=MinetIsModuleInConfig(MINET_IP_MUX) ? MinetConnect(MINET_IP_MUX) : MINET_NOHANDLE;
-  sock=MinetIsModuleInConfig(MINET_SOCK_MODULE) ? MinetAccept(MINET_SOCK_MODULE) : MINET_NOHANDLE;
+  mux = MinetIsModuleInConfig(MINET_IP_MUX) ? MinetConnect(MINET_IP_MUX) : MINET_NOHANDLE;
+  sock = MinetIsModuleInConfig(MINET_SOCK_MODULE) ? MinetAccept(MINET_SOCK_MODULE) : MINET_NOHANDLE;
 
-  if (MinetIsModuleInConfig(MINET_IP_MUX) && mux==MINET_NOHANDLE) {
+  if (MinetIsModuleInConfig(MINET_IP_MUX) && mux == MINET_NOHANDLE) 
+  {
     MinetSendToMonitor(MinetMonitoringEvent("Can't connect to mux"));
     return -1;
   }
 
-  if (MinetIsModuleInConfig(MINET_SOCK_MODULE) && sock==MINET_NOHANDLE) {
+  if (MinetIsModuleInConfig(MINET_SOCK_MODULE) && sock == MINET_NOHANDLE) 
+  {
     MinetSendToMonitor(MinetMonitoringEvent("Can't accept from sock module"));
     return -1;
   }
@@ -44,12 +109,186 @@ int main(int argc, char *argv[])
 
   MinetEvent event;
 
-  while (MinetGetNextEvent(event)==0) {
-    // if we received an unexpected type of event, print error
-    if (event.eventtype!=MinetEvent::Dataflow 
-	|| event.direction!=MinetEvent::IN) {
+  while (MinetGetNextEvent(event, TIMEOUT) == 0) 
+  {
+
+    if (event.eventtype == MinetEvent::Timeout)
+    {
+      // check all connections in connection list
+      for (ConnectionList<TCPState>::iterator cs = clist.begin(); cs != clist.end(); cs++)
+      {
+        // check for closed connections
+        if (cs->state.GetState() == CLOSED)
+        {
+          clist.erase(cs);
+        }
+
+        // check for active timers
+        Time curr_time = Time();
+        if (cs->bTmrActive == true && cs->timeout < curr_time)
+        {
+          // if maxed out number of tries
+          if (cs->state.ExpireTimerTries())
+          {
+            SockRequestResponse res;
+            res.type = CLOSE;
+            res.connection = cs->connection;
+            res.error = EOK;
+            MinetSend(sock, res);
+          }
+          // else handle each case of timeout
+          else
+          {
+            Packet send_pack;
+            unsigned char send_flag;
+            switch(cs->state.GetState())
+            {
+              case SYN_RCVD:
+              {
+                cerr << "TIMEOUT: SYN_RCVD - SEND SYN ACK" << endl;
+                SET_SYN(send_flag);
+                SET_ACK(send_flag);
+                MakePacket(Buffer(NULL, 0), cs->connection, cs->state.GetLastSent(), cs->state.GetLastRecvd(), RECV_BUF_SIZE(cs->state), send_flag);
+              }
+              break;
+              case SYN_SENT:
+              {
+                cerr << "TIMEOUT: SYN_SENT - SEND SYN" << endl;
+                SET_SYN(send_flag);
+                MakePacket(Buffer(NULL, 0), cs->connection, cs->state.GetLastSent(), cs->state.GetLastRecvd(), SEND_BUF_SIZE(cs->state), send_flag); 
+              } 
+              break;
+              case ESTABLISHED:
+              {
+                cerr << "TIMEOUT: ESTABLISHED - SEND DATA" << endl;
+                // use GBN to resend data
+                if (cs->state.N > 0)
+                {
+                  cerr << "TIMEOUT: ESTABLISHED - SEND DATA - GBN" << endl;
+
+                  unsigned int inflight_n = cs->state.GetN();
+                  unsigned int rwnd = cs->state.GetRwnd(); // receiver congestion window
+                  size_t cwnd = cs->state.SendBuffer.GetSize(); // sender congestion window
+
+                  Buffer data;
+                  while(inflight_n < GBN && cwnd != 0 && rwnd != 0)
+                  {
+                    cerr << "\n inflight_n: " << inflight_n << endl;
+                    cerr << "\n rwnd: " << rwnd << endl;
+                    cerr << "\n cwnd: " << cwnd << endl;
+                    send_flag = 0;
+
+                    // if MSS < rwnd and MSS < cwnd
+                    // space in rwnd and cwnd
+                    if(MSS < rwnd && MSS < cwnd)
+                    {
+                      cerr << "space in rwnd and cwnd" << endl;
+                      data = cs->state.SendBuffer.Extract(inflight_n, MSS);
+
+                      inflight_n = inflight_n + MSS;
+                      CLR_SYN(send_flag);
+                      SET_ACK(send_flag);
+                      SET_PSH(send_flag);
+                      send_pack = MakePacket(data, cs->connection, cs->state.GetLastSent(), cs->state.GetLastRecvd() + 1, SEND_BUF_SIZE(cs->state), send_flag);
+
+                      cerr << "SET1: " << cs->state.GetLastSent() << endl;
+                      cs->state.SetLastSent(cs->state.GetLastSent() + MSS);
+                      cerr << "SET2: " << cs->state.GetLastSent() << endl;
+                    }
+
+                    // else space in cwnd or rwnd
+                    else
+                    {
+                      cerr << "space in either or" << endl;
+                      data = cs->state.SendBuffer.Extract(inflight_n, min((int)rwnd, (int)cwnd));
+
+                      inflight_n = inflight_n + min((int)rwnd, (int)cwnd);
+                      CLR_SYN(send_flag);
+                      SET_ACK(send_flag);
+                      SET_PSH(send_flag);
+                      send_pack = MakePacket(data, cs->connection, cs->state.GetLastSent(), cs->state.GetLastRecvd() + 1, SEND_BUF_SIZE(cs->state), send_flag);
+                      cs->state.SetLastSent(cs->state.GetLastSent() + min((int)rwnd, (int)cwnd));
+                    }
+
+                    MinetSend(mux, send_pack);
+
+                    if ((rwnd < rwnd - inflight_n) && (cwnd < cwnd - inflight_n)) 
+                    {
+                      break;
+                    }
+                    else
+                    {
+                      rwnd = rwnd - inflight_n;
+                      cwnd = cwnd - inflight_n;                
+                    }
+
+                    cerr << "\n inflight_n: " << inflight_n << endl;
+                    cerr << "rwnd: " << rwnd << endl;
+                    cerr << "cwnd: " << cwnd << endl;
+
+                    // set timeout
+                    cs->bTmrActive = true;
+                    cs->timeout = Time() + RTT;
+                  }
+
+
+                  cs->state.N = inflight_n;
+
+                }
+                // otherwise just need to resend ACK
+                else
+                {
+                  cerr << "TIMEOUT: ESTABLISHED - SEND DATA - SEND ACK" << endl;
+                  SET_ACK(send_flag);
+                  MakePacket(Buffer(NULL, 0), cs->connection, cs->state.GetLastSent(), cs->state.GetLastRecvd() + 1, RECV_BUF_SIZE(cs->state), send_flag);
+                }
+              }
+              break;
+              case CLOSE_WAIT:
+              {
+                cerr << "TIMEOUT: CLOSE_WAIT - SEND ACK" << endl;
+                SET_ACK(send_flag);
+                MakePacket(Buffer(NULL, 0), cs->connection, cs->state.GetLastSent(), cs->state.GetLastRecvd(), RECV_BUF_SIZE(cs->state), send_flag);
+              }
+              break;
+              case FIN_WAIT1:
+              {
+                cerr << "TIMEOUT: FIN_WAIT1 - SEND FIN" << endl;
+                SET_FIN(send_flag);
+                MakePacket(Buffer(NULL, 0), cs->connection, cs->state.GetLastSent(), cs->state.GetLastRecvd(), SEND_BUF_SIZE(cs->state), send_flag);
+              }
+              break;
+              case CLOSING:
+              {
+                cerr << "TIMEOUT: CLOSING - SEND ACK" << endl;
+                SET_ACK(send_flag);
+                MakePacket(Buffer(NULL, 0), cs->connection, cs->state.GetLastSent(), cs->state.GetLastRecvd(), RECV_BUF_SIZE(cs->state), send_flag);
+              }
+              break;
+              case LAST_ACK:
+              {
+                cerr << "TIMEOUT: LAST_ACK - SEND FIN" << endl;
+                SET_FIN(send_flag);
+                MakePacket(Buffer(NULL, 0), cs->connection, cs->state.GetLastSent(), cs->state.GetLastRecvd(), SEND_BUF_SIZE(cs->state), send_flag);
+              }
+              break;
+              case TIME_WAIT:
+              {
+                cerr << "TIMEOUT: TIME_WAIT - SEND ACK" << endl;
+                SET_ACK(send_flag);
+                MakePacket(Buffer(NULL, 0), cs->connection, cs->state.GetLastSent(), cs->state.GetLastRecvd(), RECV_BUF_SIZE(cs->state), send_flag);
+              }
+            }
+            MinetSend(mux, send_pack);
+            cs->timeout = Time() + RTT;
+          }
+        }
+      }
+    }
+    // Unexpected event type, signore
+    else if (event.eventtype != MinetEvent::Dataflow || event.direction != MinetEvent::IN)
+    {
       MinetSendToMonitor(MinetMonitoringEvent("Unknown event ignored."));
-<<<<<<< HEAD
     } 
     //  Data from the IP layer below 
     else if (event.handle == mux) 
@@ -206,10 +445,9 @@ int main(int argc, char *argv[])
           {
             cerr << "\n=== MUX: ESTABLISHED STATE ===\n";
 
-            //if received FIN packet
             if (IS_FIN(rec_flag))
             {
-              cerr << "FIN is flagged." << endl;
+              cerr << "FIN flagged.\n";
               send_seq_n = cs->state.GetLastSent() + data.GetSize() + 1;
 
               cs->state.SetState(CLOSE_WAIT);
@@ -236,7 +474,7 @@ int main(int argc, char *argv[])
                   cerr << "Recv: " << cs->state.GetLastRecvd() << endl;
                 
                   size_t recv_buf_size = RECV_BUF_SIZE(cs->state);
-                  //if there is overflow of the received data
+                  //if there is an overflow of the received data
                   if (recv_buf_size < data.GetSize()) 
                   {
                     cs->state.RecvBuffer.AddBack(data.ExtractFront(recv_buf_size)); //extract first n bits from data to recvbuffer
@@ -286,11 +524,12 @@ int main(int argc, char *argv[])
                   // send some of the information in the buffer if there is an overflow in the sendbuffer
                   if (cs->state.SendBuffer.GetSize() - cs->state.GetN() > 0)
                   {
-                    unsigned int inflight_n = cs->state.GetN();
-                    unsigned int rwnd = cs->state.GetRwnd(); // receiver congestion window
-                    size_t cwnd = cs->state.SendBuffer.GetSize(); // sender congestion window
+                    //WHAT IS STATE.GETN() or STATE.N???
+                    unsigned int inflight_n = cs->state.GetN(); //packets in flight
+                    unsigned int rwnd = cs->state.GetRwnd(); //receiver congestion window
+                    size_t cwnd = cs->state.SendBuffer.GetSize(); //sender congestion window
 
-                    while(inflight_n < GBN && cwnd != 0 && rwnd != 0)
+                    while(inflight_n < GBN && cwnd != 0 && rwnd != 0) //GBN is a macro defined at the top
                     {
                       cerr << "\n inflight_n: " << inflight_n << endl;
                       cerr << "\n rwnd: " << rwnd << endl;
@@ -301,39 +540,38 @@ int main(int argc, char *argv[])
                       // space in rwnd and cwnd
                       if(MSS < rwnd && MSS < cwnd)
                       {
-                        cerr << "space in rwnd and cwnd" << endl;
-                        data = cs->state.SendBuffer.Extract(inflight_n, MSS);
-                        // set new seq_n
+                        cerr << "There is still space in the receiver window and sender window" << endl; 
+                        data = cs->state.SendBuffer.Extract(inflight_n, MSS); //extract data of size MSS from send buffer (offset of # packets inflight)
+                        // set new sequence number
                         // move on to the next set of packets
                         inflight_n = inflight_n + MSS;
                         CLR_SYN(send_flag);
                         SET_ACK(send_flag);
-                        SET_PSH(send_flag);
+                        //SET_PSH(send_flag);
                         send_pack = MakePacket(data, cs->connection, cs->state.GetLastSent(), cs->state.GetLastRecvd() + 1, SEND_BUF_SIZE(cs->state), send_flag);
 
-                        cerr << "SET1: " << cs->state.GetLastSent() << endl;
-                        cs->state.SetLastSent(cs->state.GetLastSent() + MSS);
-                        cerr << "SET2: " << cs->state.GetLastSent() << endl;
+                        cerr << "Last last sent: " << cs->state.GetLastSent() << endl;
+                        cs->state.SetLastSent(cs->state.GetLastSent() + MSS); //adjust LastSent to account for the MSS just sent
+                        cerr << "Last sent: " << cs->state.GetLastSent() << endl;
                       }
-
-                      // else space in cwnd or rwnd
+                      // else there space is not enough space in sender window or receiver window
                       else
                       {
-                        cerr << "space in either or" << endl;
-                        data = cs->state.SendBuffer.Extract(inflight_n, min((int)rwnd, (int)cwnd));
-                        // set new seq_n
+                        cerr << "Limited space in either sender window or receiver window" << endl;
+                        data = cs->state.SendBuffer.Extract(inflight_n, min((int)rwnd, (int)cwnd)); //extract data of size min(windows) from send buffer
+                        // set new sequence number
                         // move on to the next set of packets
                         inflight_n = inflight_n + min((int)rwnd, (int)cwnd);
                         CLR_SYN(send_flag);
                         SET_ACK(send_flag);
-                        SET_PSH(send_flag);
+                        //SET_PSH(send_flag);
                         send_pack = MakePacket(data, cs->connection, cs->state.GetLastSent(), cs->state.GetLastRecvd() + 1, SEND_BUF_SIZE(cs->state), send_flag);
                         cs->state.SetLastSent(cs->state.GetLastSent() + min((int)rwnd, (int)cwnd));
                       }
 
-                      MinetSend(mux, send_pack);
+                      MinetSend(mux, send_pack); //send the packet to mus
 
-                      if ((rwnd < rwnd - inflight_n) && (cwnd < cwnd - inflight_n)) 
+                      if ((rwnd < rwnd - inflight_n) && (cwnd < cwnd - inflight_n)) // CAN GET RID OF THIS FIRST IF?
                       {
                         break;
                       }
@@ -346,7 +584,7 @@ int main(int argc, char *argv[])
                       cerr << "\n inflight_n: " << inflight_n << endl;
                       cerr << "rwnd: " << rwnd << endl;
                       cerr << "cwnd: " << cwnd << endl;
-                      // set timeout
+                      // set timeout LOOK IN THIS TIMER THING
                       cs->bTmrActive = true;
                       cs->timeout = Time() + RTT;
                     }
@@ -482,33 +720,254 @@ int main(int argc, char *argv[])
           }
           break;
         }
-=======
-    // if we received a valid event from Minet, do processing
-    } else {
-      cerr << "invalid event from Minet" << endl;
-      //  Data from the IP layer below  //
-      if (event.handle==mux) {
-        Packet p;
-        MinetReceive(mux,p);
-        unsigned tcphlen=TCPHeader::EstimateTCPHeaderLength(p);
-        cerr << "estimated header len="<<tcphlen<<"\n";
-        p.ExtractHeaderFromPayload<TCPHeader>(tcphlen);
-        IPHeader ipl=p.FindHeader(Headers::IPHeader);
-        TCPHeader tcph=p.FindHeader(Headers::TCPHeader);
-
-        cerr << "TCP Packet: IP Header is "<<ipl<<" and ";
-        cerr << "TCP Header is "<<tcph << " and ";
-
-        cerr << "Checksum is " << (tcph.IsCorrectChecksum(p) ? "VALID" : "INVALID");
-        
->>>>>>> 0bee0e6e5ea3ee411f7036fddfe7b34e79609253
       }
-          //  Data from the Sockets layer above  //
-      if (event.handle==sock) {
-        SockRequestResponse s;
-        MinetReceive(sock,s);
-        cerr << "Received Socket Request:" << s << endl;
+      // else there is no open connection
+      else
+      {
+        cerr << "Could not find matching connection\n";
       }
+      cerr << "\n === IP LAYER DONE === \n";
+    }
+
+    //  Data from the Sockets layer above  //
+    else if (event.handle == sock) 
+    {
+      cerr << "\n === SOCK LAYER START === \n";
+      SockRequestResponse req;
+      SockRequestResponse res;
+      MinetReceive(sock, req);
+      Packet send_pack;
+      unsigned char send_flag;
+      cerr << "Received Socket Request:" << req << endl;
+
+      switch(req.type)
+      {
+        case CONNECT:
+        {
+          cerr << "\n=== SOCK: CONNECT ===\n";
+
+          unsigned int init_seq = rand();
+          TCPState connect_conn(init_seq, SYN_SENT, MAX_TRIES);
+          connect_conn.N = 0;
+          ConnectionToStateMapping<TCPState> new_conn(req.connection, Time(), connect_conn, true);
+          clist.push_front(new_conn);
+         
+          res.type = STATUS;
+          res.error = EOK;
+          MinetSend(sock, res);
+
+          SET_SYN(send_flag);
+          Packet send_pack = MakePacket(Buffer(NULL, 0), new_conn.connection, init_seq, 0, SEND_BUF_SIZE(new_conn.state), send_flag);
+          MinetSend(mux, send_pack);
+          sleep(1);
+
+          MinetSend(mux, send_pack);
+
+          cerr << "\n=== SOCK: END CONNECT ===\n";
+        }
+        break;
+        case ACCEPT:
+        {
+          // passive open
+          cerr << "\n=== SOCK: ACCEPT ===\n";
+
+          TCPState acceptConnection(rand(), LISTEN, MAX_TRIES);
+          acceptConnection.N = 0;
+          ConnectionToStateMapping<TCPState> newConnection(req.connection, Time(), acceptConnection, false); //new connection with accept connection state
+          clist.push_front(newConnection); //push newconnection to connection list
+         
+          res.type = STATUS;
+          res.connection = req.connection;
+          res.bytes = 0;
+          res.error = EOK;
+          MinetSend(sock, res); //send sockrequestresponse to sock
+
+          cerr << "\n=== SOCK: END ACCEPT ===\n";
+        }
+        break;
+        case WRITE: 
+        {
+          cerr << "\n=== SOCK: WRITE ===\n";
+
+          ConnectionList<TCPState>::iterator cs = clist.FindMatching(req.connection);
+          if (cs != clist.end() && cs->state.GetState() == ESTABLISHED)
+          {
+            cerr << "\n=== SOCK: WRITE: CONNECTION FOUND ===\n";
+
+            size_t send_buffer_size = SEND_BUF_SIZE(cs->state);
+            //if there is overflow in the sendbuffer
+            if (send_buffer_size < req.bytes)
+            {
+              //add to some of the data from req to the sendbuffer
+              cs->state.SendBuffer.AddBack(req.data.ExtractFront(send_buffer_size));
+
+              res.bytes = send_buffer_size; //size of res.data is the size of the send buffer
+              res.error = EBUF_SPACE; //error to indicate lack fo buffer space
+            }
+            //otherwise if there is no overflow
+            else
+            {
+              cs->state.SendBuffer.AddBack(req.data);
+
+              res.bytes = req.bytes;
+              res.error = EOK;
+            }
+            
+            cs->state.SendBuffer.Print(cerr);
+            cerr << endl;
+
+            res.type = STATUS;
+            res.connection = req.connection;
+            MinetSend(sock, res);
+
+            //IS THIS FLOW OR CONGESTION CONTROL???
+            // send data from buffer using "Go Back N"
+            unsigned int inflight_n = 0; // packets in flight
+            unsigned int rwnd = cs->state.GetRwnd(); // receiver congestion window
+            size_t cwnd = cs->state.SendBuffer.GetSize(); // sender congestion window
+
+            cerr << "\n outside of gbn loop\n";
+            cerr << "inflight_n: " << inflight_n << endl;
+            cerr << "rwnd: " << rwnd << endl;
+            cerr << "cwnd: " << cwnd << endl;
+            cerr << "last SENT: " << cs->state.GetLastSent() << endl;
+            cerr << "last ACKED: " << cs->state.GetLastAcked() << endl;
+            
+            // iterate through all the packets
+            Buffer data;
+            while(inflight_n < GBN && cwnd != 0 && rwnd != 0) //GBN is a macro defined at the top (16)
+            {
+              cerr << "\n=== SOCK: WRITE: GBN LOOP ===\n";
+              // if MSS < rwnd and MSS < cwnd
+              // space in rwnd and cwnd
+              if(MSS < rwnd && MSS < cwnd)
+              {
+                cerr << "There is still space in the receiver window and sender window" << endl;
+                data = cs->state.SendBuffer.Extract(inflight_n, MSS); //extract data of size MSS from send buffer (offset of # packets inflight)
+                // set new seq_n
+                // move on to the next set of packets
+                inflight_n = inflight_n + MSS;
+                CLR_SYN(send_flag);
+                SET_ACK(send_flag);
+                //SET_PSH(send_flag);
+                send_pack = MakePacket(data, cs->connection, cs->state.GetLastSent(), cs->state.GetLastRecvd() + 1, SEND_BUF_SIZE(cs->state), send_flag);
+
+                cerr << "Last last sent: " << cs->state.GetLastSent() << endl; 
+                cs->state.SetLastSent(cs->state.GetLastSent() + MSS); //adjust LastSent to account for the MSS just sent
+                cerr << "Last sent: " << cs->state.GetLastSent() << endl;
+              }
+              // else there space is not enough space in sender window or receiver window
+              else
+              {
+                cerr << "Limited space in either sender window or receiver window" << endl;
+                data = cs->state.SendBuffer.Extract(inflight_n, min((int)rwnd, (int)cwnd)); //extract data of size min(windows) from send buffer
+                // set new seq_n
+                // move on to the next set of packets
+                inflight_n = inflight_n + min((int)rwnd, (int)cwnd);
+                CLR_SYN(send_flag);
+                SET_ACK(send_flag);
+                //SET_PSH(send_flag);
+                send_pack = MakePacket(data, cs->connection, cs->state.GetLastSent(), cs->state.GetLastRecvd() + 1, SEND_BUF_SIZE(cs->state), send_flag);
+                cs->state.SetLastSent(cs->state.GetLastSent() + min((int)rwnd, (int)cwnd));
+              }
+
+              MinetSend(mux, send_pack); //send the packet to mux
+
+              if ((rwnd < rwnd - inflight_n) && (cwnd < cwnd - inflight_n)) // CAN GET RID OF THIS FIRST IF?
+              {
+                break;
+              }
+              else
+              {
+                rwnd = rwnd - inflight_n;
+                cwnd = cwnd - inflight_n;                
+              }
+
+              cerr << "\n inflight_n: " << inflight_n << endl;
+              cerr << "rwnd: " << rwnd << endl;
+              cerr << "cwnd: " << cwnd << endl;
+              // set timeout
+              //NEED TO SET TIMEOUT FOR THIS TOO???
+            }
+
+            cs->state.N = inflight_n;
+          }
+          else
+          {
+            cerr << "\n=== SOCK: WRITE: NO CONNECTION FOUND ===\n";
+            res.connection = req.connection;
+            res.type = STATUS;
+            res.bytes = req.bytes;
+            res.error = ENOMATCH;
+          }
+          
+          cerr << "\n=== SOCK: END WRITE ===\n";
+        }
+        break;
+        case FORWARD:
+        {
+          cerr << "\n=== SOCK: FORWARD ===\n";
+          // NO IMPELMTNATION NEEDED
+          cerr << "\n=== SOCK: END FORWARD ===\n";
+        }
+        break;
+        case CLOSE:
+        {
+          cerr << "\n=== SOCK: CLOSE ===\n";
+          ConnectionList<TCPState>::iterator cs = clist.FindMatching(req.connection);
+          if (cs->state.GetState() == ESTABLISHED)
+          {
+            unsigned char send_flag;
+            Packet send_pack;
+            cs->state.SetState(FIN_WAIT1);
+            SET_FIN(send_flag);
+            send_pack = MakePacket(Buffer(NULL, 0), cs->connection, cs->state.GetLastSent(), cs->state.GetLastRecvd() + 1, RECV_BUF_SIZE(cs->state), send_flag);
+            MinetSend(mux, send_pack);
+          }
+          cerr << "\n=== SOCK: END CLOSE ===\n";
+        }
+        break; 
+        case STATUS:
+        {
+          cerr << "\n=== SOCK: STATUS ===\n";
+          ConnectionList<TCPState>::iterator cs = clist.FindMatching(req.connection);
+          if (cs->state.GetState() == ESTABLISHED)
+          {
+            cerr << req.bytes << " out of " << cs->state.RecvBuffer.GetSize() << " read" << endl;
+            // if all data read
+            if (req.bytes == cs->state.RecvBuffer.GetSize())
+            {
+              cs->state.RecvBuffer.Clear();
+            }
+            // if some data still in buffer
+            else
+            {
+              cs->state.RecvBuffer.Erase(0, req.bytes);
+
+              res.type = WRITE;
+              res.connection = req.connection;
+              res.data = cs->state.RecvBuffer;
+              res.bytes = cs->state.RecvBuffer.GetSize();
+              res.error = EOK;
+
+              MinetSend(sock, res);
+            }
+          }
+          cerr << "\n=== SOCK: END STATUS ===\n";
+        }
+        break;
+        default:
+        {
+          cerr << "\n=== SOCK: DEFAULT ===\n";
+          cerr << "\n=== SOCK: END DEFAULT ===\n";
+        } 
+          // TODO: responsd to request with
+        break;
+
+      }
+
+      cerr << "\n === SOCK LAYER DONE === \n";
+
     }
   }
   return 0;
