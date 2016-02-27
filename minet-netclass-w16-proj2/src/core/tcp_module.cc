@@ -191,9 +191,9 @@ int main(int argc, char *argv[])
                       SET_PSH(send_flag);
                       send_pack = MakePacket(data, cs->connection, cs->state.GetLastSent(), cs->state.GetLastRecvd() + 1, SEND_BUF_SIZE(cs->state), send_flag);
 
-                      cerr << "SET1: " << cs->state.GetLastSent() << endl;
+                      cerr << "Last last sent: " << cs->state.GetLastSent() << endl;
                       cs->state.SetLastSent(cs->state.GetLastSent() + MSS);
-                      cerr << "SET2: " << cs->state.GetLastSent() << endl;
+                      cerr << "Last sent: " << cs->state.GetLastSent() << endl;
                     }
 
                     // else space in cwnd or rwnd
@@ -368,9 +368,9 @@ int main(int argc, char *argv[])
 
               cs->state.SetState(SYN_RCVD);
               cs->state.SetLastRecvd(rec_seq_n);
-              cerr << "SET1: " << cs->state.GetLastSent() << endl;
+              cerr << "Last last sent: " << cs->state.GetLastSent() << endl;
               cs->state.SetLastSent(send_seq_n); // generate random SEQ # to send out
-              cerr << "SET2: " << cs->state.GetLastSent() << endl;
+              cerr << "Last sent: " << cs->state.GetLastSent() << endl;
 
               cs->bTmrActive = true;
               cs->timeout = Time() + RTT;
@@ -451,9 +451,9 @@ int main(int argc, char *argv[])
               send_seq_n = cs->state.GetLastSent() + data.GetSize() + 1;
 
               cs->state.SetState(CLOSE_WAIT);
-              cerr << "SET1: " << cs->state.GetLastSent() << endl;
+              cerr << "Last last sent: " << cs->state.GetLastSent() << endl;
               cs->state.SetLastSent(send_seq_n);
-              cerr << "SET2: " << cs->state.GetLastSent() << endl;
+              cerr << "Last sent: " << cs->state.GetLastSent() << endl;
               cs->state.SetLastRecvd(rec_seq_n);
 
               SET_ACK(send_flag);
@@ -613,9 +613,9 @@ int main(int argc, char *argv[])
 
               cs->state.SetState(LAST_ACK);
               cs->state.SetLastRecvd(rec_seq_n);
-              cerr << "SET1: " << cs->state.GetLastSent() << endl;
+              cerr << "Last last sent: " << cs->state.GetLastSent() << endl;
               cs->state.SetLastSent(send_seq_n);
-              cerr << "SET2: " << cs->state.GetLastSent() << endl;
+              cerr << "Last sent: " << cs->state.GetLastSent() << endl;
 
               // timeout stuff
               cs->bTmrActive = true;
@@ -628,30 +628,30 @@ int main(int argc, char *argv[])
             }
           }
           break;
-          case FIN_WAIT1:
+          case FIN_WAIT1: //this state is after the client actively sent a FIN to the other user and is waiting for a response
           {
             cerr << "\n=== MUX: FIN_WAIT1 STATE ===\n";
-            if (IS_FIN(rec_flag))
+            if (IS_FIN(rec_flag)) //if other user sends a FIN back, we close the connection
             {
               send_seq_n = cs->state.GetLastSent() + data.GetSize() + 1;
 
-              cs->state.SetState(CLOSING);
+              cs->state.SetState(CLOSING); //set state to closing
               cs->state.SetLastRecvd(rec_seq_n);
-              cerr << "SET1: " << cs->state.GetLastSent() << endl;
+              cerr << "Last last sent: " << cs->state.GetLastSent() << endl;
               cs->state.SetLastSent(send_seq_n);
-              cerr << "SET2: " << cs->state.GetLastSent() << endl;
+              cerr << "Last sent: " << cs->state.GetLastSent() << endl;
 
               // set timeout
               cs->bTmrActive = true;
               cs->timeout = Time() + RTT;
               cs->state.SetTimerTries(MAX_TRIES);
 
-              SET_FIN(send_flag);
-              SET_ACK(send_flag);
+              SET_FIN(send_flag); 
+              SET_ACK(send_flag); 
               send_pack = MakePacket(Buffer(NULL, 0), conn, send_seq_n, send_ack_n, SEND_BUF_SIZE(cs->state), send_flag);
-              MinetSend(mux, send_pack);
+              MinetSend(mux, send_pack); //send packet to mux
             }
-            else if (IS_ACK(rec_flag))
+            else if (IS_ACK(rec_flag)) //received an ACK back after first sending a FIN, so set state to FIN_WAIT2
             {
 
               cs->state.SetState(FIN_WAIT2);
@@ -684,10 +684,10 @@ int main(int argc, char *argv[])
             }
           }
           break;
-          case FIN_WAIT2:
+          case FIN_WAIT2: //waiting for a FIN from the server, and then will send an ACK back and change to time_wait state
           {
             cerr << "\n=== MUX: FIN_WAIT2 STATE ===\n";
-            if (IS_FIN(rec_flag))
+            if (IS_FIN(rec_flag)) //if receive FIN from server, will send an ACK back to server and change to time_wait state
             {
               send_seq_n = cs->state.GetLastSent() + data.GetSize() + 1;
 
@@ -701,7 +701,8 @@ int main(int argc, char *argv[])
               cs->timeout = Time() + RTT;
               cs->state.SetTimerTries(MAX_TRIES);
 
-              SET_ACK(send_flag);
+              //send ACK back to server after receiving their FIN
+              SET_ACK(send_flag); 
               send_pack = MakePacket(Buffer(NULL, 0), conn, send_seq_n, send_ack_n, SEND_BUF_SIZE(cs->state), send_flag);
               MinetSend(mux, send_pack);
             }
