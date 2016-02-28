@@ -309,9 +309,9 @@ int main(int argc, char *argv[])
     //  Data from the IP layer below 
     else if (event.handle == mux) 
     {
-      cerr << "\n ~~~ START OF IP LAYER ~~~ \n";
+      cerr << "\n  ~~~ START OF IP LAYER ~~~ \n";
 
-      cerr << "  ~~  PACKET RECEIVED FROM BELOW ~~\n";
+      cerr << "  ~~~  PACKET RECEIVED FROM BELOW ~~~\n";
 
       Packet receivedPacket = ReceivePacket(mux);
       // MinetReceive(mux, receivedPacket);
@@ -749,13 +749,13 @@ int main(int argc, char *argv[])
       {
         cerr << "Could not find matching connection\n";
       }
-      cerr << "\n ~~~ IP LAYER DONE ~~~ \n";
+      cerr << "\n  ~~~ END OF IP LAYER ~~~ \n";
     }
 
     //  Data from the Sockets layer above  //
     else if (event.handle == sock) 
     {
-      cerr << "\n ~~~ SOCK LAYER START ~~~ \n";
+      cerr << "\n  ~~~ START OF SOCKET LAYER ~~~ \n";
       SockRequestResponse req;
       SockRequestResponse res;
       MinetReceive(sock, req);
@@ -990,7 +990,7 @@ int main(int argc, char *argv[])
 
       }
 
-      cerr << "\n ~~~ SOCK LAYER DONE ~~~ \n";
+      cerr << "\n  ~~~ END OF SOCKET LAYER ~~~ \n";
 
     }
   }
