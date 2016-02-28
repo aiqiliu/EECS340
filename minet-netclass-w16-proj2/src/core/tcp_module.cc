@@ -34,8 +34,7 @@ using std::max;
 #define GBN MSS*16
 #define RTT 5
 
-// CHANGE THIS TOO
-#define RECV_BUF_SIZE(state) (state.TCP_BUFFER_SIZE - state.RecvBuffer.GetSize()) //JUST USE GetRwnd(). A member function of a state
+
 #define SEND_BUF_SIZE(state) (state.TCP_BUFFER_SIZE - state.SendBuffer.GetSize())
 
 
@@ -71,7 +70,7 @@ Packet MakePacket(Buffer data, Connection conn, unsigned int seq_n, unsigned int
   sendTCPheader.RecomputeChecksum(sndPacket);
   sndPacket.PushBackHeader(sendTCPheader);
 
-  cerr << "*MAKING PACKET*" << endl;
+  cerr << "~~~MAKING PACKET~~~" << endl;
   cerr << sendIPheader << endl;
   cerr << sendTCPheader << endl;
   cerr << sndPacket << endl;
@@ -164,7 +163,7 @@ int main(int argc, char *argv[])
                 cerr << "!!! TIMEOUT: SYN_RCVD STATE !!!  RE-SENDING SYN ACK !!!" << endl;
                 SET_SYN(sendFlag);
                 SET_ACK(sendFlag);
-                SendPacket(mux, Buffer(NULL, 0), cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd(), RECV_BUF_SIZE(cxn->state), sendFlag);
+                SendPacket(mux, Buffer(NULL, 0), cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd(), cxn->state.GetRwnd(), sendFlag);
               }
               break;
               case SYN_SENT:
@@ -256,7 +255,7 @@ int main(int argc, char *argv[])
                 {
                   cerr << "!!! TIMEOUT: ESTABLISHED STATE !!! RE-SENDING ACK !!!" << endl;
                   SET_ACK(sendFlag);
-                  SendPacket(mux, Buffer(NULL, 0), cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, RECV_BUF_SIZE(cxn->state), sendFlag);
+                  SendPacket(mux, Buffer(NULL, 0), cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, cxn->state.GetLastRecvd(), sendFlag);
                 }
               }
               break;
@@ -264,7 +263,7 @@ int main(int argc, char *argv[])
               {
                 cerr << "!!! TIMEOUT: CLOSE_WAIT STATE !!! RE-SENDING ACK !!!" << endl;
                 SET_ACK(sendFlag);
-                SendPacket(mux, Buffer(NULL, 0), cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd(), RECV_BUF_SIZE(cxn->state), sendFlag);
+                SendPacket(mux, Buffer(NULL, 0), cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd(), cxn->state.GetLastRecvd(), sendFlag);
               }
               break;
               case FIN_WAIT1:
@@ -278,7 +277,7 @@ int main(int argc, char *argv[])
               {
                 cerr << "!!! TIMEOUT: CLOSING STATE !!! RE-SENDING ACK !!!" << endl;
                 SET_ACK(sendFlag);
-                SendPacket(mux, Buffer(NULL, 0), cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd(), RECV_BUF_SIZE(cxn->state), sendFlag);
+                SendPacket(mux, Buffer(NULL, 0), cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd(), cxn->state.GetLastRecvd(), sendFlag);
               }
               break;
               case LAST_ACK:
@@ -292,7 +291,7 @@ int main(int argc, char *argv[])
               {
                 cerr << "!!! TIMEOUT: TIME_WAIT !!! RE-SENDING ACK !!!" << endl;
                 SET_ACK(sendFlag);
-                SendPacket(mux, Buffer(NULL, 0), cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd(), RECV_BUF_SIZE(cxn->state), sendFlag);
+                SendPacket(mux, Buffer(NULL, 0), cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd(), cxn->state.GetLastRecvd(), sendFlag);
               }
             }
             MinetSend(mux, sndPacket);
@@ -394,7 +393,7 @@ int main(int argc, char *argv[])
               cxn->timeout = Time() + RTT; // To set the timeout interval to be that of 1 RTT starting the current time. This sets a timeout for receiving an ACK from remote side.
               SET_SYN(sendFlag);
               SET_ACK(sendFlag);
-              SendPacket(mux, Buffer(NULL, 0), conn, sendSeqNum, sendAckNum, RECV_BUF_SIZE(cxn->state), sendFlag);
+              SendPacket(mux, Buffer(NULL, 0), conn, sendSeqNum, sendAckNum, cxn->state.GetLastRecvd(), sendFlag);
             }
           }
           break;
@@ -477,7 +476,7 @@ int main(int argc, char *argv[])
               cxn->state.SetLastRecvd(recSeqNum);
 
               SET_ACK(sendFlag); //send back an ACK for the FIN received
-              SendPacket(mux, Buffer(NULL, 0), conn, sendSeqNum, sendAckNum, RECV_BUF_SIZE(cxn->state), sendFlag);
+              SendPacket(mux, Buffer(NULL, 0), conn, sendSeqNum, sendAckNum, cxn->state.GetLastRecvd(), sendFlag);
 
               //might include later for debugging
               // res.type = CLOSE;
@@ -497,12 +496,12 @@ int main(int argc, char *argv[])
                   cerr << "The received packet has data" << endl;
                   cerr << "Recv: " << cxn->state.GetLastRecvd() << endl;
                 
-                  size_t recv_buf_size = RECV_BUF_SIZE(cxn->state);
+                  size_t recvBufferSize = cxn->state.GetLastRecvd();
                   //if there is an overflow of the received data
-                  if (recv_buf_size < data.GetSize()) 
+                  if (recvBufferSize < data.GetSize()) 
                   {
-                    cxn->state.RecvBuffer.AddBack(data.ExtractFront(recv_buf_size)); //extract first n bits from data to recvbuffer
-                    sendAckNum = recSeqNum + recv_buf_size - 1;
+                    cxn->state.RecvBuffer.AddBack(data.ExtractFront(recvBufferSize)); //extract first n bits from data to recvbuffer
+                    sendAckNum = recSeqNum + recvBufferSize - 1;
                     cxn->state.SetLastRecvd(sendAckNum);
                   }
                   else //if there is no overflow
@@ -513,12 +512,12 @@ int main(int argc, char *argv[])
                   }
 
                   //grabbing the next sequence number to send 
-                  sendSeqNum = cxn->state.GetLastSent() + min(recv_buf_size, data.GetSize());
+                  sendSeqNum = cxn->state.GetLastSent() + min(recvBufferSize, data.GetSize());
                   cxn->state.SetLastSent(sendSeqNum);
 
                   //send an empty packet with ACK flag to mux to acknowledge the last received packet
                   SET_ACK(sendFlag);
-                  SendPacket(mux, Buffer(NULL, 0), conn, sendSeqNum, sendAckNum + 1, RECV_BUF_SIZE(cxn->state), sendFlag);
+                  SendPacket(mux, Buffer(NULL, 0), conn, sendSeqNum, sendAckNum + 1, cxn->state.GetLastRecvd(), sendFlag);
 
                   //create a socketrequestresponse to send to sock (its a write request to the socket)
                   res.type = WRITE;
@@ -648,7 +647,7 @@ int main(int argc, char *argv[])
               cxn->state.SetTimerTries(MAX_TRIES);
 
               SET_FIN(sendFlag);
-              SendPacket(mux, Buffer(NULL, 0), conn, sendSeqNum, sendAckNum, RECV_BUF_SIZE(cxn->state), sendFlag);
+              SendPacket(mux, Buffer(NULL, 0), conn, sendSeqNum, sendAckNum, cxn->state.GetLastRecvd(), sendFlag);
             }
           }
           break;
@@ -944,7 +943,7 @@ int main(int argc, char *argv[])
             Packet sndPacket;
             cxn->state.SetState(FIN_WAIT1);
             SET_FIN(sendFlag); //send fin to activate closing
-            SendPacket(mux, Buffer(NULL, 0), cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, RECV_BUF_SIZE(cxn->state), sendFlag);
+            SendPacket(mux, Buffer(NULL, 0), cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, cxn->state.GetLastRecvd(), sendFlag);
           }
           cerr << "\n   ~~~ SOCK: END CLOSE ~~~\n";
         }
