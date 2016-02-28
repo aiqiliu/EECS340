@@ -313,8 +313,8 @@ int main(int argc, char *argv[])
 
       cerr << "  == GOT A PACKET ==\n";
 
-      Packet rec_pack;
-      MinetReceive(mux, rec_pack);
+      Packet rec_pack = ReceivePacket(mux);
+      // MinetReceive(mux, rec_pack);
 
       unsigned tcphlen = TCPHeader::EstimateTCPHeaderLength(rec_pack);
       rec_pack.ExtractHeaderFromPayload<TCPHeader>(tcphlen);
@@ -394,8 +394,9 @@ int main(int argc, char *argv[])
               cxn->timeout = Time() + RTT; // To set the timeout interval to be that of 1 RTT starting the current time. This sets a timeout for receiving an ACK from remote side.
               SET_SYN(send_flag);
               SET_ACK(send_flag);
-              send_pack = MakePacket(Buffer(NULL, 0), conn, send_seq_n, send_ack_n, RECV_BUF_SIZE(cxn->state), send_flag); // ack
-              MinetSend(mux, send_pack);
+              // send_pack = MakePacket(Buffer(NULL, 0), conn, send_seq_n, send_ack_n, RECV_BUF_SIZE(cxn->state), send_flag); // ack
+              // MinetSend(mux, send_pack);
+              SendPacket(mux, LISTEN, Buffer(NULL, 0), conn, send_seq_n, send_ack_n, RECV_BUF_SIZE(cxn->state), send_flag);
               // DisposePacket(cxn->state.GetState(), Buffer(NULL, 0), conn, send_seq_n, send_ack_n, RECV_BUF_SIZE(cxn->state), send_flag); // ack
             }
           }
@@ -438,8 +439,9 @@ int main(int argc, char *argv[])
 
 
               SET_ACK(send_flag);
-              send_pack = MakePacket(Buffer(NULL, 0), conn, send_seq_n, send_ack_n, SEND_BUF_SIZE(cxn->state), send_flag);
-              MinetSend(mux, send_pack);
+              // send_pack = MakePacket(Buffer(NULL, 0), conn, send_seq_n, send_ack_n, SEND_BUF_SIZE(cxn->state), send_flag);
+              // MinetSend(mux, send_pack);
+              SendPacket(mux, SYN_SENT, Buffer(NULL, 0), conn, send_seq_n, send_ack_n, SEND_BUF_SIZE(cxn->state), send_flag);
 
               // NOTE: we do this for compatibility with our tcp_server testing, which seems to receives size 6 ACKs
               // from us even though the size is shown as zero above.
@@ -475,8 +477,9 @@ int main(int argc, char *argv[])
               cxn->state.SetLastRecvd(rec_seq_n);
 
               SET_ACK(send_flag);
-              send_pack = MakePacket(Buffer(NULL, 0), conn, send_seq_n, send_ack_n, RECV_BUF_SIZE(cxn->state), send_flag);
-              MinetSend(mux, send_pack);
+              // send_pack = MakePacket(Buffer(NULL, 0), conn, send_seq_n, send_ack_n, RECV_BUF_SIZE(cxn->state), send_flag);
+              // MinetSend(mux, send_pack);
+              SendPacket(mux, ESTABLISHED, Buffer(NULL, 0), conn, send_seq_n, send_ack_n, RECV_BUF_SIZE(cxn->state), send_flag);
             }
             //else, is a dataflow packet
             else
@@ -512,8 +515,9 @@ int main(int argc, char *argv[])
 
                   //send an empty packet with ACK flag to mux to acknowledge the last received packet
                   SET_ACK(send_flag);
-                  send_pack = MakePacket(Buffer(NULL, 0), conn, send_seq_n, send_ack_n + 1, RECV_BUF_SIZE(cxn->state), send_flag);
-                  MinetSend(mux, send_pack);
+                  // send_pack = MakePacket(Buffer(NULL, 0), conn, send_seq_n, send_ack_n + 1, RECV_BUF_SIZE(cxn->state), send_flag);
+                  // MinetSend(mux, send_pack);
+                  SendPacket(mux, ESTABLISHED, Buffer(NULL, 0), conn, send_seq_n, send_ack_n + 1, RECV_BUF_SIZE(cxn->state), send_flag);
 
                   //create a socketrequestresponse to send to sock (its a write request to the socket)
                   res.type = WRITE;
@@ -639,8 +643,9 @@ int main(int argc, char *argv[])
               cxn->state.SetTimerTries(MAX_TRIES);
 
               SET_FIN(send_flag);
-              send_pack = MakePacket(Buffer(NULL, 0), conn, send_seq_n, send_ack_n, RECV_BUF_SIZE(cxn->state), send_flag);
-              MinetSend(mux, send_pack);
+              // send_pack = MakePacket(Buffer(NULL, 0), conn, send_seq_n, send_ack_n, RECV_BUF_SIZE(cxn->state), send_flag);
+              // MinetSend(mux, send_pack);
+              SendPacket(mux, CLOSE_WAIT, Buffer(NULL, 0), conn, send_seq_n, send_ack_n, RECV_BUF_SIZE(cxn->state), send_flag);
             }
           }
           break;
@@ -664,8 +669,9 @@ int main(int argc, char *argv[])
 
               SET_FIN(send_flag); 
               SET_ACK(send_flag); 
-              send_pack = MakePacket(Buffer(NULL, 0), conn, send_seq_n, send_ack_n, SEND_BUF_SIZE(cxn->state), send_flag);
-              MinetSend(mux, send_pack); //send packet to mux
+              // send_pack = MakePacket(Buffer(NULL, 0), conn, send_seq_n, send_ack_n, SEND_BUF_SIZE(cxn->state), send_flag);
+              // MinetSend(mux, send_pack); //send packet to mux
+              SendPacket(mux, FIN_WAIT1, Buffer(NULL, 0), conn, send_seq_n, send_ack_n, SEND_BUF_SIZE(cxn->state), send_flag);
             }
             else if (IS_ACK(rec_flag)) //received an ACK back after first sending a FIN, so set state to FIN_WAIT2
             {
@@ -719,8 +725,9 @@ int main(int argc, char *argv[])
 
               //send ACK back to server after receiving their FIN
               SET_ACK(send_flag); 
-              send_pack = MakePacket(Buffer(NULL, 0), conn, send_seq_n, send_ack_n, SEND_BUF_SIZE(cxn->state), send_flag);
-              MinetSend(mux, send_pack);
+              // send_pack = MakePacket(Buffer(NULL, 0), conn, send_seq_n, send_ack_n, SEND_BUF_SIZE(cxn->state), send_flag);
+              // MinetSend(mux, send_pack);
+              SendPacket(mux, FIN_WAIT2, Buffer(NULL, 0), conn, send_seq_n, send_ack_n, SEND_BUF_SIZE(cxn->state), send_flag);
             }
           }
           break;
@@ -774,8 +781,9 @@ int main(int argc, char *argv[])
           MinetSend(sock, res); //send an ok status to sock
 
           SET_SYN(send_flag);
-          Packet send_pack = MakePacket(Buffer(NULL, 0), new_conn.connection, init_seq, 0, SEND_BUF_SIZE(new_conn.state), send_flag);
-          MinetSend(mux, send_pack); //send a SYN packet to mux
+          // Packet send_pack = MakePacket(Buffer(NULL, 0), new_conn.connection, init_seq, 0, SEND_BUF_SIZE(new_conn.state), send_flag);
+          // MinetSend(mux, send_pack); //send a SYN packet to mux
+          MakePacket(mux, CONNECT, Buffer(NULL, 0), new_conn.connection, init_seq, 0, SEND_BUF_SIZE(new_conn.state), send_flag);
           
           // cerr << "\n=== SOCK: END CONNECT ===\n";
         }
@@ -932,8 +940,9 @@ int main(int argc, char *argv[])
             Packet send_pack;
             cxn->state.SetState(FIN_WAIT1);
             SET_FIN(send_flag); //send fin to activate closing
-            send_pack = MakePacket(Buffer(NULL, 0), cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, RECV_BUF_SIZE(cxn->state), send_flag);
-            MinetSend(mux, send_pack);
+            // send_pack = MakePacket(Buffer(NULL, 0), cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, RECV_BUF_SIZE(cxn->state), send_flag);
+            // MinetSend(mux, send_pack);
+            SendPacket(mux, CLOSE, Buffer(NULL, 0), cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, RECV_BUF_SIZE(cxn->state), send_flag);
           }
           cerr << "\n=== SOCK: END CLOSE ===\n";
         }
