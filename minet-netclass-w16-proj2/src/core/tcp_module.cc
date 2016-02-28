@@ -478,7 +478,7 @@ int main(int argc, char *argv[])
 
               SET_ACK(sendFlag); //send back an ACK for the FIN received
               SendPacket(mux, Buffer(NULL, 0), conn, sendSeqNum, sendAckNum, RECV_BUF_SIZE(cxn->state), sendFlag);
-q
+
               //might include later for debugging
               // res.type = CLOSE;
               // res.error = EOK; 
@@ -767,7 +767,7 @@ q
       {
         case CONNECT:
         {
-          // cerr << "\n~~~ SOCK: CONNECT ~~~\n";
+          cerr << "\n~~~ SOCK: CONNECT ~~~\n";
 
           unsigned int initialSeqNum = rand(); // Can make this a specific wierd value rather than the rand() function.
           TCPState connectConn(initialSeqNum, SYN_SENT, MAX_TRIES); //state is SYN_SENT
