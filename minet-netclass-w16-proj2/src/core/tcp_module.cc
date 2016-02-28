@@ -226,15 +226,8 @@ int main(int argc, char *argv[])
 
                     MinetSend(mux, sndPacket);
 
-                    if ((recWindow < recWindow - numInflight) && (sndWindow < sndWindow - numInflight)) 
-                    {
-                      break;
-                    }
-                    else
-                    {
-                      recWindow = recWindow - numInflight;
-                      sndWindow = sndWindow - numInflight;                
-                    }
+                    recWindow = recWindow - numInflight;
+                    sndWindow = sndWindow - numInflight;                
 
                     cerr << "\n numInflight: " << numInflight << endl;
                     cerr << "recWindow: " << recWindow << endl;
@@ -441,8 +434,7 @@ int main(int argc, char *argv[])
               SET_ACK(sendFlag);
               SendPacket(mux, Buffer(NULL, 0), conn, sendSeqNum, sendAckNum, SEND_BUF_SIZE(cxn->state), sendFlag);
 
-              // NOTE: we do this for compatibility with our tcp_server testing, which seems to receives size 6 ACKs
-              // from us even though the size is shown as zero above.
+              // ACKS have size 6 for some reason
               cxn->state.SetLastSent(max((int) cxn->state.GetLastSent() + 7, (int) sendSeqNum));
 
               res.type = WRITE;
@@ -591,16 +583,9 @@ int main(int argc, char *argv[])
                       }
 
                       MinetSend(mux, sndPacket); //send the packet to mus
-
-                      if ((recWindow < recWindow - numInflight) && (sndWindow < sndWindow - numInflight)) // CAN GET RID OF THIS FIRST IF?
-                      {
-                        break;
-                      }
-                      else
-                      {
-                        recWindow = recWindow - numInflight;
-                        sndWindow = sndWindow - numInflight;                
-                      }
+                      
+                      recWindow = recWindow - numInflight;
+                      sndWindow = sndWindow - numInflight;                
 
                       cerr << "\n numInflight: " << numInflight << endl;
                       cerr << "recWindow: " << recWindow << endl;
@@ -894,15 +879,8 @@ int main(int argc, char *argv[])
 
               MinetSend(mux, sndPacket); //send the packet to mux
 
-              if ((recWindow < recWindow - numInflight) && (sndWindow < sndWindow - numInflight)) // CAN GET RID OF THIS FIRST IF?
-              {
-                break;
-              }
-              else
-              {
-                recWindow = recWindow - numInflight;
-                sndWindow = sndWindow - numInflight;                
-              }
+              recWindow = recWindow - numInflight;
+              sndWindow = sndWindow - numInflight;                
 
               cerr << "\n numInflight: " << numInflight << endl;
               cerr << "recWindow: " << recWindow << endl;
