@@ -464,11 +464,11 @@ int main(int argc, char *argv[])
             cerr << "\n=== MUX: ESTABLISHED STATE ===\n";
 
             if (IS_FIN(rec_flag))
-            {
+            { // part16. activate close
               cerr << "FIN flagged.\n";
               send_seq_n = cxn->state.GetLastSent() + data.GetSize() + 1;
 
-              cxn->state.SetState(CLOSE_WAIT);
+              cxn->state.SetState(CLOSE_WAIT); //passive close
               cerr << "Last last sent: " << cxn->state.GetLastSent() << endl;
               cxn->state.SetLastSent(send_seq_n);
               cerr << "Last sent: " << cxn->state.GetLastSent() << endl;
@@ -652,7 +652,7 @@ int main(int argc, char *argv[])
               send_seq_n = cxn->state.GetLastSent() + data.GetSize() + 1;
 
               cxn->state.SetState(CLOSING); //set state to closing
-              cxn->state.SetLastRecvd(rec_seq_n);
+              cxn->state.SetLastRecvd(rec_seq_n); //can replace these code with helper 
               cerr << "Last last sent: " << cxn->state.GetLastSent() << endl;
               cxn->state.SetLastSent(send_seq_n);
               cerr << "Last sent: " << cxn->state.GetLastSent() << endl;
@@ -690,7 +690,7 @@ int main(int argc, char *argv[])
           }
           break;
           case LAST_ACK:
-          {
+          { //start of sending the second fin
             cerr << "\n=== MUX: LAST_ACK STATE ===\n";
             if (IS_ACK(rec_flag))
             {
@@ -926,12 +926,12 @@ int main(int argc, char *argv[])
         {
           cerr << "\n=== SOCK: CLOSE ===\n";
           ConnectionList<TCPState>::iterator cxn = connect_list.FindMatching(req.connection);
-          if (cxn->state.GetState() == ESTABLISHED)
+          if (cxn->state.GetState() == ESTABLISHED) //established connection, now call for close 
           {
             unsigned char send_flag;
             Packet send_pack;
             cxn->state.SetState(FIN_WAIT1);
-            SET_FIN(send_flag);
+            SET_FIN(send_flag); //send fin to activate closing
             send_pack = MakePacket(Buffer(NULL, 0), cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, RECV_BUF_SIZE(cxn->state), send_flag);
             MinetSend(mux, send_pack);
           }
