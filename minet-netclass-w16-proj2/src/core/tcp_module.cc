@@ -403,8 +403,13 @@ int main(int argc, char *argv[])
           case SYN_RCVD:
           {
             cerr << "\n=== MUX: SYN_RCVD STATE ===\n";
+            if (IS_ACK(rec_flag)) {
+              cerr << "Received packet is ACKED! Will try to establish connection!" << endl;
+            }
+
             if (IS_ACK(rec_flag) && cxn->state.GetLastSent() == rec_ack_n - 1)
             {
+              cerr << "Connection is established!" << endl;
               cxn->state.SetState(ESTABLISHED);
               cxn->state.SetLastRecvd(rec_seq_n - 1); // next will have same seq num
 
@@ -473,8 +478,12 @@ int main(int argc, char *argv[])
               cerr << "Last sent: " << cxn->state.GetLastSent() << endl;
               cxn->state.SetLastRecvd(rec_seq_n);
 
-              SET_ACK(send_flag);
+              SET_ACK(send_flag); //send back an ACK for the FIN received
               SendPacket(mux, Buffer(NULL, 0), conn, send_seq_n, send_ack_n, RECV_BUF_SIZE(cxn->state), send_flag);
+
+              res.type = CLOSE;
+              res.error = EOK; 
+              MinetSend(sock, res); 
             }
             //else, is a dataflow packet
             else
@@ -619,6 +628,8 @@ int main(int argc, char *argv[])
           case CLOSE_WAIT:
           {
             cerr << "\n=== MUX: CLOSE_WAIT STATE ===\n";
+            //at this stage, need to wait for local user to terminate connection, then we send our own FIN
+
             if (IS_FIN(rec_flag))
             {
               // send a fin ack back
