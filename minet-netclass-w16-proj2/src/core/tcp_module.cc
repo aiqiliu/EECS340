@@ -204,6 +204,7 @@ int main(int argc, char *argv[])
                       inflight_n = inflight_n + MSS;
                       CLR_SYN(send_flag);
                       SET_ACK(send_flag);
+		      SET_PSH(send_flag);
                       send_pack = MakePacket(data, cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, SEND_BUF_SIZE(cxn->state), send_flag);
 
                       cerr << "Last last sent: " << cxn->state.GetLastSent() << endl;
@@ -220,6 +221,7 @@ int main(int argc, char *argv[])
                       inflight_n = inflight_n + min((int)rwnd, (int)cwnd);
                       CLR_SYN(send_flag);
                       SET_ACK(send_flag);
+		      SET_PSH(send_flag);
                       send_pack = MakePacket(data, cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, SEND_BUF_SIZE(cxn->state), send_flag);
                       cxn->state.SetLastSent(cxn->state.GetLastSent() + min((int)rwnd, (int)cwnd));
                     }
@@ -567,6 +569,7 @@ int main(int argc, char *argv[])
                         inflight_n = inflight_n + MSS;
                         CLR_SYN(send_flag);
                         SET_ACK(send_flag);
+			SET_PSH(send_flag);
                         send_pack = MakePacket(data, cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, SEND_BUF_SIZE(cxn->state), send_flag);
 
                         cerr << "Last last sent: " << cxn->state.GetLastSent() << endl;
@@ -583,6 +586,7 @@ int main(int argc, char *argv[])
                         inflight_n = inflight_n + min((int)rwnd, (int)cwnd);
                         CLR_SYN(send_flag);
                         SET_ACK(send_flag);
+			SET_PSH(send_flag);
                         send_pack = MakePacket(data, cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, SEND_BUF_SIZE(cxn->state), send_flag);
                         cxn->state.SetLastSent(cxn->state.GetLastSent() + min((int)rwnd, (int)cwnd));
                       }
@@ -867,6 +871,7 @@ int main(int argc, char *argv[])
                 inflight_n = inflight_n + MSS;
                 CLR_SYN(send_flag);
                 SET_ACK(send_flag);
+		SET_PSH(send_flag);
                 send_pack = MakePacket(data, cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, SEND_BUF_SIZE(cxn->state), send_flag);
 
                 cerr << "Last last sent: " << cxn->state.GetLastSent() << endl; 
@@ -883,6 +888,7 @@ int main(int argc, char *argv[])
                 inflight_n = inflight_n + min((int)rwnd, (int)cwnd);
                 CLR_SYN(send_flag);
                 SET_ACK(send_flag);
+		SET_PSH(send_flag);
                 send_pack = MakePacket(data, cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, SEND_BUF_SIZE(cxn->state), send_flag);
                 cxn->state.SetLastSent(cxn->state.GetLastSent() + min((int)rwnd, (int)cwnd));
               }
