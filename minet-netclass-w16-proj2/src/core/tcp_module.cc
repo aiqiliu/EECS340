@@ -164,8 +164,6 @@ int main(int argc, char *argv[])
                 cerr << "TIMEOUT: SYN_RCVD - SEND SYN ACK" << endl;
                 SET_SYN(send_flag);
                 SET_ACK(send_flag);
-                //MAKING PACKET BUT NOT SENDING IT!!!
-                //MakePacket(Buffer(NULL, 0), cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd(), RECV_BUF_SIZE(cxn->state), send_flag);
                 SendPacket(mux, Buffer(NULL, 0), cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd(), RECV_BUF_SIZE(cxn->state), send_flag);
               }
               break;
@@ -173,8 +171,6 @@ int main(int argc, char *argv[])
               {
                 cerr << "TIMEOUT: SYN_SENT - SEND SYN" << endl;
                 SET_SYN(send_flag);
-                //MAKING PACKET BUT NOT SENDING IT!!!
-                //MakePacket(Buffer(NULL, 0), cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd(), SEND_BUF_SIZE(cxn->state), send_flag); 
                 SendPacket(mux, Buffer(NULL, 0), cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd(), SEND_BUF_SIZE(cxn->state), send_flag);
               } 
               break;
@@ -258,7 +254,7 @@ int main(int argc, char *argv[])
                 {
                   cerr << "TIMEOUT: ESTABLISHED - SEND DATA - SEND ACK" << endl;
                   SET_ACK(send_flag);
-                  MakePacket(Buffer(NULL, 0), cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, RECV_BUF_SIZE(cxn->state), send_flag);
+                  SendPacket(mux, Buffer(NULL, 0), cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, RECV_BUF_SIZE(cxn->state), send_flag);
                 }
               }
               break;
@@ -266,35 +262,35 @@ int main(int argc, char *argv[])
               {
                 cerr << "TIMEOUT: CLOSE_WAIT - SEND ACK" << endl;
                 SET_ACK(send_flag);
-                MakePacket(Buffer(NULL, 0), cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd(), RECV_BUF_SIZE(cxn->state), send_flag);
+                SendPacket(mux, Buffer(NULL, 0), cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd(), RECV_BUF_SIZE(cxn->state), send_flag);
               }
               break;
               case FIN_WAIT1:
               {
                 cerr << "TIMEOUT: FIN_WAIT1 - SEND FIN" << endl;
                 SET_FIN(send_flag);
-                MakePacket(Buffer(NULL, 0), cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd(), SEND_BUF_SIZE(cxn->state), send_flag);
+                SendPacket(mux, Buffer(NULL, 0), cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd(), SEND_BUF_SIZE(cxn->state), send_flag);
               }
               break;
               case CLOSING:
               {
                 cerr << "TIMEOUT: CLOSING - SEND ACK" << endl;
                 SET_ACK(send_flag);
-                MakePacket(Buffer(NULL, 0), cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd(), RECV_BUF_SIZE(cxn->state), send_flag);
+                SendPacket(mux, Buffer(NULL, 0), cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd(), RECV_BUF_SIZE(cxn->state), send_flag);
               }
               break;
               case LAST_ACK:
               {
                 cerr << "TIMEOUT: LAST_ACK - SEND FIN" << endl;
                 SET_FIN(send_flag);
-                MakePacket(Buffer(NULL, 0), cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd(), SEND_BUF_SIZE(cxn->state), send_flag);
+                SendPacket(mux, Buffer(NULL, 0), cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd(), SEND_BUF_SIZE(cxn->state), send_flag);
               }
               break;
               case TIME_WAIT:
               {
                 cerr << "TIMEOUT: TIME_WAIT - SEND ACK" << endl;
                 SET_ACK(send_flag);
-                MakePacket(Buffer(NULL, 0), cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd(), RECV_BUF_SIZE(cxn->state), send_flag);
+                SendPacket(mux, Buffer(NULL, 0), cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd(), RECV_BUF_SIZE(cxn->state), send_flag);
               }
             }
             MinetSend(mux, send_pack);
