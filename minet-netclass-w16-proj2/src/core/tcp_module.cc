@@ -28,11 +28,10 @@ using std::max;
 
 //          ~~~~~ MACROS ~~~~~
 
-#define MAX_TRIES 5
+#define TMR_TRIES 5
 #define MSS 536
-#define TIMEOUT 10
 #define GBN MSS*16
-#define RTT 5
+#define RTT 3
 
 
 #define SEND_BUF_SIZE(state) (state.TCP_BUFFER_SIZE - state.SendBuffer.GetSize())
@@ -122,7 +121,7 @@ int main(int argc, char *argv[])
 
   MinetEvent event;
 
-  while (MinetGetNextEvent(event, TIMEOUT) == 0) 
+  while (MinetGetNextEvent(event, 10) == 0) 
   {
 
     if (event.eventtype == MinetEvent::Timeout)
@@ -412,7 +411,7 @@ int main(int argc, char *argv[])
 
               // timer
               cxn->bTmrActive = false;
-              cxn->state.SetTimerTries(MAX_TRIES);
+              cxn->state.SetTimerTries(TMR_TRIES);
 
               // create res to send to sock
               res.type = WRITE;
@@ -644,7 +643,7 @@ int main(int argc, char *argv[])
               // timeout stuff
               cxn->bTmrActive = true;
               cxn->timeout = Time() + RTT;
-              cxn->state.SetTimerTries(MAX_TRIES);
+              cxn->state.SetTimerTries(TMR_TRIES);
 
               SET_FIN(sendFlag);
               SendPacket(mux, Buffer(NULL, 0), conn, sendSeqNum, sendAckNum, cxn->state.GetLastRecvd(), sendFlag);
@@ -667,7 +666,7 @@ int main(int argc, char *argv[])
               // set timeout
               cxn->bTmrActive = true;
               cxn->timeout = Time() + RTT;
-              cxn->state.SetTimerTries(MAX_TRIES);
+              cxn->state.SetTimerTries(TMR_TRIES);
 
               SET_FIN(sendFlag); 
               SET_ACK(sendFlag); 
@@ -721,7 +720,7 @@ int main(int argc, char *argv[])
               // set timeout
               cxn->bTmrActive = true;
               cxn->timeout = Time() + RTT;
-              cxn->state.SetTimerTries(MAX_TRIES);
+              cxn->state.SetTimerTries(TMR_TRIES);
 
               //send ACK back to server after receiving their FIN
               SET_ACK(sendFlag); 
@@ -769,7 +768,7 @@ int main(int argc, char *argv[])
           cerr << "\n   ~~~ SOCK: CONNECT ~~~\n";
 
           unsigned int initialSeqNum = rand(); // Can make this a specific wierd value rather than the rand() function.
-          TCPState connectConn(initialSeqNum, SYN_SENT, MAX_TRIES); //state is SYN_SENT
+          TCPState connectConn(initialSeqNum, SYN_SENT, TMR_TRIES); //state is SYN_SENT
           connectConn.N = 0; // number of packets allowed in flight
           ConnectionToStateMapping<TCPState> newConn(req.connection, Time(), connectConn, true); // sets properties for connection, timeout, state, timer
           connectionsList.push_front(newConn); // Add this new connection to the list of connections
@@ -794,7 +793,7 @@ int main(int argc, char *argv[])
           // passive open
           cerr << "\n   ~~~ SOCK: ACCEPT ~~~\n";
 
-          TCPState acceptConnection(rand(), LISTEN, MAX_TRIES);
+          TCPState acceptConnection(rand(), LISTEN, TMR_TRIES);
           acceptConnection.N = 0;
           ConnectionToStateMapping<TCPState> newConnection(req.connection, Time(), acceptConnection, false); //new connection with accept connection state
           connectionsList.push_front(newConnection); //push newconnection to connection list
