@@ -35,7 +35,7 @@ using std::max;
 #define RTT 5
 
 // CHANGE THIS TOO
-#define RECV_BUF_SIZE(state) (state.TCP_BUFFER_SIZE - state.RecvBuffer.GetSize()) //JUST USE GetrecWindow(). A member function of a state
+#define RECV_BUF_SIZE(state) (state.TCP_BUFFER_SIZE - state.RecvBuffer.GetSize()) //JUST USE GetRwnd(). A member function of a state
 #define SEND_BUF_SIZE(state) (state.TCP_BUFFER_SIZE - state.SendBuffer.GetSize())
 
 
@@ -183,7 +183,7 @@ int main(int argc, char *argv[])
                   cerr << "TIMEOUT: ESTABLISHED - SEND DATA - GBN" << endl;
 
                   unsigned int numInflight = cxn->state.GetN();
-                  unsigned int recWindow = cxn->state.GetrecWindow(); // receiver congestion window
+                  unsigned int recWindow = cxn->state.GetRwnd(); // receiver congestion window
                   size_t sndWindow = cxn->state.SendBuffer.GetSize(); // sender congestion window
 
                   Buffer data;
@@ -548,7 +548,7 @@ int main(int argc, char *argv[])
                   {
                     //WHAT IS STATE.GETN() or STATE.N???
                     unsigned int numInflight = cxn->state.GetN(); //packets in flight
-                    unsigned int recWindow = cxn->state.GetrecWindow(); //receiver congestion window
+                    unsigned int recWindow = cxn->state.GetRwnd(); //receiver congestion window
                     size_t sndWindow = cxn->state.SendBuffer.GetSize(); //sender congestion window
 
                     while(numInflight < GBN && sndWindow != 0 && recWindow != 0) //GBN is a macro defined at the top
@@ -845,7 +845,7 @@ int main(int argc, char *argv[])
 
             // send data from buffer using "Go Back N"
             unsigned int numInflight = 0; // packets in flight
-            unsigned int recWindow = cxn->state.GetrecWindow(); // receiver congestion window
+            unsigned int recWindow = cxn->state.GetRwnd(); // receiver congestion window
             size_t sndWindow = cxn->state.SendBuffer.GetSize(); // sender congestion window
 
             cerr << "\n outside of gbn loop\n";
