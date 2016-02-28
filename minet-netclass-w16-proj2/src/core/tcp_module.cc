@@ -479,9 +479,10 @@ int main(int argc, char *argv[])
               SET_ACK(sendFlag); //send back an ACK for the FIN received
               SendPacket(mux, Buffer(NULL, 0), conn, sendSeqNum, sendAckNum, RECV_BUF_SIZE(cxn->state), sendFlag);
 
-              res.type = CLOSE;
-              res.error = EOK; 
-              MinetSend(sock, res); 
+              //might include later for debugging
+              // res.type = CLOSE;
+              // res.error = EOK; 
+              // MinetSend(sock, res); 
             }
             //else, is a dataflow packet
             else
@@ -784,8 +785,8 @@ int main(int argc, char *argv[])
           SendPacket(mux, Buffer(NULL, 0), newConn.connection, initialSeqNum, 0, SEND_BUF_SIZE(newConn.state), sendFlag);
 
           //sleep for ARP caveat problem
-          sleep(5);
-          SendPacket(mux, Buffer(NULL, 0), newConn.connection, initialSeqNum, 0, SEND_BUF_SIZE(newConn.state), sendFlag);
+          // sleep(5);
+          // SendPacket(mux, Buffer(NULL, 0), newConn.connection, initialSeqNum, 0, SEND_BUF_SIZE(newConn.state), sendFlag);
           // cerr << "\n=== SOCK: END CONNECT ===\n";
         }
         break;
