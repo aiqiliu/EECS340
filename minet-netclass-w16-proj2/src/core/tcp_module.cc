@@ -778,7 +778,10 @@ int main(int argc, char *argv[])
           // Packet send_pack = MakePacket(Buffer(NULL, 0), new_conn.connection, init_seq, 0, SEND_BUF_SIZE(new_conn.state), send_flag);
           // MinetSend(mux, send_pack); //send a SYN packet to mux
           SendPacket(mux, Buffer(NULL, 0), new_conn.connection, init_seq, 0, SEND_BUF_SIZE(new_conn.state), send_flag);
-          
+
+          //sleep for ARP caveat problem
+          sleep(5);
+          SendPacket(mux, Buffer(NULL, 0), new_conn.connection, init_seq, 0, SEND_BUF_SIZE(new_conn.state), send_flag);
           // cerr << "\n=== SOCK: END CONNECT ===\n";
         }
         break;
