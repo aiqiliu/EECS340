@@ -46,7 +46,7 @@ Packet MakePacket(Buffer data, Connection conn, unsigned int seq_n, unsigned int
 {
   // Make Packet
   unsigned size = MIN_MACRO(IP_PACKET_MAX_LENGTH-TCP_HEADER_MAX_LENGTH, data.GetSize());
-  Packet sendPacket(data.ExtractFront(size));
+  Packet sndPacket(data.ExtractFront(size));
 
   // Make and push IP header
   IPHeader sendIPheader;
@@ -54,29 +54,29 @@ Packet MakePacket(Buffer data, Connection conn, unsigned int seq_n, unsigned int
   sendIPheader.SetSourceIP(conn.src);
   sendIPheader.SetDestIP(conn.dest);
   sendIPheader.SetTotalLength(size + TCP_HEADER_BASE_LENGTH + IP_HEADER_BASE_LENGTH);
-  sendPacket.PushFrontHeader(sendIPheader);
+  sndPacket.PushFrontHeader(sendIPheader);
 
   // Make and push TCP header
   TCPHeader sendTCPheader;
-  sendTCPheader.SetSourcePort(conn.srcport, sendPacket);
-  sendTCPheader.SetDestPort(conn.destport, sendPacket);
-  sendTCPheader.SetHeaderLen(TCP_HEADER_BASE_LENGTH/4, sendPacket);
-  sendTCPheader.SetFlags(flag, sendPacket);
-  sendTCPheader.SetWinSize(win_size, sendPacket); // to fix
-  sendTCPheader.SetSeqNum(seq_n, sendPacket);
+  sendTCPheader.SetSourcePort(conn.srcport, sndPacket);
+  sendTCPheader.SetDestPort(conn.destport, sndPacket);
+  sendTCPheader.SetHeaderLen(TCP_HEADER_BASE_LENGTH/4, sndPacket);
+  sendTCPheader.SetFlags(flag, sndPacket);
+  sendTCPheader.SetWinSize(win_size, sndPacket); // to fix
+  sendTCPheader.SetSeqNum(seq_n, sndPacket);
   if (IS_ACK(flag))
   {
-    sendTCPheader.SetAckNum(ack_n, sendPacket);
+    sendTCPheader.SetAckNum(ack_n, sndPacket);
   }
-  sendTCPheader.RecomputeChecksum(sendPacket);
-  sendPacket.PushBackHeader(sendTCPheader);
+  sendTCPheader.RecomputeChecksum(sndPacket);
+  sndPacket.PushBackHeader(sendTCPheader);
 
   cerr << "*MAKING PACKET*" << endl;
   cerr << sendIPheader << endl;
   cerr << sendTCPheader << endl;
-  cerr << sendPacket << endl;
+  cerr << sndPacket << endl;
 
-  return sendPacket;
+  return sndPacket;
 }
 
 //helper function to make packet and send it using Minet
@@ -155,7 +155,7 @@ int main(int argc, char *argv[])
           // else handle each case of timeout
           else
           {
-            Packet sendPacket;
+            Packet sndPacket;
             unsigned char sendFlag;
             switch(cxn->state.GetState())
             {
@@ -205,7 +205,7 @@ int main(int argc, char *argv[])
                       CLR_SYN(sendFlag);
                       SET_ACK(sendFlag);
 		                  SET_PSH(sendFlag);
-                      sendPacket = MakePacket(data, cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, SEND_BUF_SIZE(cxn->state), sendFlag);
+                      sndPacket = MakePacket(data, cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, SEND_BUF_SIZE(cxn->state), sendFlag);
 
                       cerr << "Last last sent: " << cxn->state.GetLastSent() << endl;
                       cxn->state.SetLastSent(cxn->state.GetLastSent() + MSS);
@@ -222,11 +222,11 @@ int main(int argc, char *argv[])
                       CLR_SYN(sendFlag);
                       SET_ACK(sendFlag);
 		                  SET_PSH(sendFlag);
-                      sendPacket = MakePacket(data, cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, SEND_BUF_SIZE(cxn->state), sendFlag);
+                      sndPacket = MakePacket(data, cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, SEND_BUF_SIZE(cxn->state), sendFlag);
                       cxn->state.SetLastSent(cxn->state.GetLastSent() + min((int)recWindow, (int)sndWindow));
                     }
 
-                    MinetSend(mux, sendPacket);
+                    MinetSend(mux, sndPacket);
 
                     if ((recWindow < recWindow - numInflight) && (sndWindow < sndWindow - numInflight)) 
                     {
@@ -295,7 +295,7 @@ int main(int argc, char *argv[])
                 SendPacket(mux, Buffer(NULL, 0), cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd(), RECV_BUF_SIZE(cxn->state), sendFlag);
               }
             }
-            MinetSend(mux, sendPacket);
+            MinetSend(mux, sndPacket);
             cxn->timeout = Time() + RTT;
           }
         }
@@ -366,7 +366,7 @@ int main(int argc, char *argv[])
 
         unsigned char sendFlag = 0; // SET_SYN function needs a parameter of type unsigned char which is then ORed with 10 (bitwise OR)
         SockRequestResponse res;
-        Packet sendPacket;
+        Packet sndPacket;
 
         switch(cxn->state.GetState())
         {
@@ -457,7 +457,7 @@ int main(int argc, char *argv[])
           break;
           case SYN_SENT1:
           {
-            cerr << "\n=== MUX: SYN_SENT1 STATE ===\n";
+            cerr << "\n=== MUX: SYN_SENT STATE ===\n";
             // NO IMPLEMENTATION NEEDED
           }
           break;
@@ -570,7 +570,7 @@ int main(int argc, char *argv[])
                         CLR_SYN(sendFlag);
                         SET_ACK(sendFlag);
 			                  SET_PSH(sendFlag);
-                        sendPacket = MakePacket(data, cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, SEND_BUF_SIZE(cxn->state), sendFlag);
+                        sndPacket = MakePacket(data, cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, SEND_BUF_SIZE(cxn->state), sendFlag);
 
                         cerr << "Last last sent: " << cxn->state.GetLastSent() << endl;
                         cxn->state.SetLastSent(cxn->state.GetLastSent() + MSS); //adjust LastSent to account for the MSS just sent
@@ -587,11 +587,11 @@ int main(int argc, char *argv[])
                         CLR_SYN(sendFlag);
                         SET_ACK(sendFlag);
 			                  SET_PSH(sendFlag);
-                        sendPacket = MakePacket(data, cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, SEND_BUF_SIZE(cxn->state), sendFlag);
+                        sndPacket = MakePacket(data, cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, SEND_BUF_SIZE(cxn->state), sendFlag);
                         cxn->state.SetLastSent(cxn->state.GetLastSent() + min((int)recWindow, (int)sndWindow));
                       }
 
-                      MinetSend(mux, sendPacket); //send the packet to mus
+                      MinetSend(mux, sndPacket); //send the packet to mus
 
                       if ((recWindow < recWindow - numInflight) && (sndWindow < sndWindow - numInflight)) // CAN GET RID OF THIS FIRST IF?
                       {
@@ -758,7 +758,7 @@ int main(int argc, char *argv[])
       SockRequestResponse req;
       SockRequestResponse res;
       MinetReceive(sock, req);
-      Packet sendPacket;
+      Packet sndPacket;
       unsigned char sendFlag;
       cerr << "Received Socket Request:" << req << endl;
 
@@ -779,8 +779,8 @@ int main(int argc, char *argv[])
           MinetSend(sock, res); //send an ok status to sock
 
           SET_SYN(sendFlag);
-          // Packet sendPacket = MakePacket(Buffer(NULL, 0), newConn.connection, initialSeqNum, 0, SEND_BUF_SIZE(newConn.state), sendFlag);
-          // MinetSend(mux, sendPacket); //send a SYN packet to mux
+          // Packet sndPacket = MakePacket(Buffer(NULL, 0), newConn.connection, initialSeqNum, 0, SEND_BUF_SIZE(newConn.state), sendFlag);
+          // MinetSend(mux, sndPacket); //send a SYN packet to mux
           SendPacket(mux, Buffer(NULL, 0), newConn.connection, initialSeqNum, 0, SEND_BUF_SIZE(newConn.state), sendFlag);
 
           //sleep for ARP caveat problem
@@ -872,7 +872,7 @@ int main(int argc, char *argv[])
                 CLR_SYN(sendFlag);
                 SET_ACK(sendFlag);
 		            SET_PSH(sendFlag);
-                sendPacket = MakePacket(data, cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, SEND_BUF_SIZE(cxn->state), sendFlag);
+                sndPacket = MakePacket(data, cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, SEND_BUF_SIZE(cxn->state), sendFlag);
 
                 cerr << "Last last sent: " << cxn->state.GetLastSent() << endl; 
                 cxn->state.SetLastSent(cxn->state.GetLastSent() + MSS); //adjust LastSent to account for the MSS just sent
@@ -889,11 +889,11 @@ int main(int argc, char *argv[])
                 CLR_SYN(sendFlag);
                 SET_ACK(sendFlag);
 		            SET_PSH(sendFlag);
-                sendPacket = MakePacket(data, cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, SEND_BUF_SIZE(cxn->state), sendFlag);
+                sndPacket = MakePacket(data, cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, SEND_BUF_SIZE(cxn->state), sendFlag);
                 cxn->state.SetLastSent(cxn->state.GetLastSent() + min((int)recWindow, (int)sndWindow));
               }
 
-              MinetSend(mux, sendPacket); //send the packet to mux
+              MinetSend(mux, sndPacket); //send the packet to mux
 
               if ((recWindow < recWindow - numInflight) && (sndWindow < sndWindow - numInflight)) // CAN GET RID OF THIS FIRST IF?
               {
@@ -940,7 +940,7 @@ int main(int argc, char *argv[])
           if (cxn->state.GetState() == ESTABLISHED) //established connection, now call for close 
           {
             unsigned char sendFlag;
-            Packet sendPacket;
+            Packet sndPacket;
             cxn->state.SetState(FIN_WAIT1);
             SET_FIN(sendFlag); //send fin to activate closing
             SendPacket(mux, Buffer(NULL, 0), cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, RECV_BUF_SIZE(cxn->state), sendFlag);
