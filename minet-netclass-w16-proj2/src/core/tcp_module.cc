@@ -241,7 +241,7 @@ int main(int argc, char *argv[])
           else
           {
             Packet sndPacket;
-            unsigned char set_flag = 1, unset_flag = 0, sendFlag = 0;
+            unsigned char sendFlag, set_flag = 1, unset_flag = 0;
             switch(cxn->state.GetState())
             {
               case SYN_RCVD:
@@ -379,7 +379,7 @@ int main(int argc, char *argv[])
         data.Print(cerr); // why?
         cerr << endl;
 
-        unsigned char set_flag = 1, unset_flag = 0, sendFlag = 0; // SET_SYN function needs a parameter of type unsigned char which is then ORed with 10 (bitwise OR)ORed with 10 (bitwise OR)
+        unsigned char sendFlag, set_flag = 1, unset_flag = 0; // SET_SYN function needs a parameter of type unsigned char which is then ORed with 10 (bitwise OR)ORed with 10 (bitwise OR)
         SockRequestResponse res;
         Packet sndPacket;
 
