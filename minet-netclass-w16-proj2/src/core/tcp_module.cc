@@ -202,10 +202,10 @@ int main(int argc, char *argv[])
       IPHeader recIPheader = receivedPacket.FindHeader(Headers::IPHeader);
       TCPHeader recTCPheader = receivedPacket.FindHeader(Headers::TCPHeader);
 
-      // cerr << recIPheader <<"\n";
-      // cerr << recTCPheader << "\n";
-      // cerr << "Checksum is " << (recTCPheader.IsCorrectChecksum(receivedPacket) ? "VALID\n\n" : "INVALID\n\n");
-      // cerr << receivedPacket << "\n";
+      cerr << recIPheader <<"\n";
+      cerr << recTCPheader << "\n";
+      cerr << "Checksum is " << (recTCPheader.IsCorrectChecksum(receivedPacket) ? "VALID\n\n" : "INVALID\n\n");
+      cerr << receivedPacket << "\n";
 
       // Unpack useful data
       Connection conn;
