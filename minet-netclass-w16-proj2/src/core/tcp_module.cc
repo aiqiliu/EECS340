@@ -77,6 +77,68 @@ Packet MakePacket(Buffer data, Connection conn, unsigned int seq_n, unsigned int
   return sndPacket;
 }
 
+void sendWithFlowControl(ConnectionToStateMapping<TCPState> cxn, MinetHandle mux) {
+  unsigned int numInflight = cxn->state.GetN(); //packets in flight
+  unsigned int recWindow = cxn->state.GetRwnd(); //receiver congestion window
+  size_t sndWindow = cxn->state.SendBuffer.GetSize(); //sender congestion window
+  Buffer data;
+
+  while(numInflight < GBN && sndWindow != 0 && recWindow != 0) //GBN is a macro defined at the top
+  {
+    cerr << "\n numInflight: " << numInflight << endl;
+    cerr << "\n recWindow: " << recWindow << endl;
+    cerr << "\n sndWindow: " << sndWindow << endl;
+    sendFlag = 0;
+
+    // if MSS < recWindow and MSS < sndWindow
+    // space in recWindow and sndWindow
+    if(MSS < recWindow && MSS < sndWindow)
+    {
+      cerr << "There is still space in the receiver window and sender window" << endl; 
+      data = cxn->state.SendBuffer.Extract(numInflight, MSS); //extract data of size MSS from send buffer (offset of # packets inflight)
+      // set new sequence number
+      // move on to the next set of packets
+      numInflight = numInflight + MSS;
+      CLR_SYN(sendFlag);
+      SET_ACK(sendFlag);
+      SET_PSH(sendFlag);
+      sndPacket = MakePacket(data, cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, SEND_BUF_SIZE(cxn->state), sendFlag);
+
+      cerr << "Last last sent: " << cxn->state.GetLastSent() << endl;
+      cxn->state.SetLastSent(cxn->state.GetLastSent() + MSS); //adjust LastSent to account for the MSS just sent
+      cerr << "Last sent: " << cxn->state.GetLastSent() << endl;
+    }
+    // else there space is not enough space in sender window or receiver window
+    else
+    {
+      cerr << "Limited space in either sender window or receiver window" << endl;
+      data = cxn->state.SendBuffer.Extract(numInflight, min((int)recWindow, (int)sndWindow)); //extract data of size min(windows) from send buffer
+      // set new sequence number
+      // move on to the next set of packets
+      numInflight = numInflight + min((int)recWindow, (int)sndWindow);
+      CLR_SYN(sendFlag);
+      SET_ACK(sendFlag);
+      SET_PSH(sendFlag);
+      sndPacket = MakePacket(data, cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, SEND_BUF_SIZE(cxn->state), sendFlag);
+      cxn->state.SetLastSent(cxn->state.GetLastSent() + min((int)recWindow, (int)sndWindow));
+    }
+
+    MinetSend(mux, sndPacket); //send the packet to mus
+    
+    recWindow = recWindow - numInflight;
+    sndWindow = sndWindow - numInflight;                
+
+    cerr << "\n numInflight: " << numInflight << endl;
+    cerr << "recWindow: " << recWindow << endl;
+    cerr << "sndWindow: " << sndWindow << endl;
+    // set timeout LOOK IN THIS TIMER THING
+    cxn->bTmrActive = true;
+    cxn->timeout = Time() + RTT;
+  }
+
+  cxn->state.N = numInflight;
+}
+
 //helper function to make packet and send it using Minet
 void SendPacket(MinetHandle handle, Buffer data, Connection conn, unsigned int seq_n, unsigned int ack_n, size_t win_size, unsigned char flag)
 {
@@ -179,68 +241,7 @@ int main(int argc, char *argv[])
                 if (cxn->state.N > 0)
                 {
                   cerr << "!!! TIMEOUT: ESTABLISHED STATE !!! RE-SEND DATA USING GBN !!!" << endl;
-
-                  unsigned int numInflight = cxn->state.GetN();
-                  unsigned int recWindow = cxn->state.GetRwnd(); // receiver congestion window
-                  size_t sndWindow = cxn->state.SendBuffer.GetSize(); // sender congestion window
-
-                  Buffer data;
-                  while(numInflight < GBN && sndWindow != 0 && recWindow != 0)
-                  {
-                    cerr << "\n numInflight: " << numInflight << endl;
-                    cerr << "\n recWindow: " << recWindow << endl;
-                    cerr << "\n sndWindow: " << sndWindow << endl;
-                    sendFlag = 0;
-
-                    // if MSS < recWindow and MSS < sndWindow
-                    // space in recWindow and sndWindow
-                    if(MSS < recWindow && MSS < sndWindow)
-                    {
-                      cerr << "space in recWindow and sndWindow" << endl;
-                      data = cxn->state.SendBuffer.Extract(numInflight, MSS);
-
-                      numInflight = numInflight + MSS;
-                      CLR_SYN(sendFlag);
-                      SET_ACK(sendFlag);
-		                  SET_PSH(sendFlag);
-                      sndPacket = MakePacket(data, cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, SEND_BUF_SIZE(cxn->state), sendFlag);
-
-                      cerr << "Last last sent: " << cxn->state.GetLastSent() << endl;
-                      cxn->state.SetLastSent(cxn->state.GetLastSent() + MSS);
-                      cerr << "Last sent: " << cxn->state.GetLastSent() << endl;
-                    }
-
-                    // else space in sndWindow or recWindow
-                    else
-                    {
-                      cerr << "space in either or" << endl;
-                      data = cxn->state.SendBuffer.Extract(numInflight, min((int)recWindow, (int)sndWindow));
-
-                      numInflight = numInflight + min((int)recWindow, (int)sndWindow);
-                      CLR_SYN(sendFlag);
-                      SET_ACK(sendFlag);
-		                  SET_PSH(sendFlag);
-                      sndPacket = MakePacket(data, cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, SEND_BUF_SIZE(cxn->state), sendFlag);
-                      cxn->state.SetLastSent(cxn->state.GetLastSent() + min((int)recWindow, (int)sndWindow));
-                    }
-
-                    MinetSend(mux, sndPacket);
-
-                    recWindow = recWindow - numInflight;
-                    sndWindow = sndWindow - numInflight;                
-
-                    cerr << "\n numInflight: " << numInflight << endl;
-                    cerr << "recWindow: " << recWindow << endl;
-                    cerr << "sndWindow: " << sndWindow << endl;
-
-                    // set timeout
-                    cxn->bTmrActive = true;
-                    cxn->timeout = Time() + RTT;
-                  }
-
-
-                  cxn->state.N = numInflight;
-
+                  sendWithFlowControl(cxn mux);
                 }
                 // otherwise just need to resend ACK
                 else
@@ -538,64 +539,7 @@ int main(int argc, char *argv[])
                   if (cxn->state.SendBuffer.GetSize() - cxn->state.GetN() > 0)
                   {
                     //WHAT IS STATE.GETN() or STATE.N???
-                    unsigned int numInflight = cxn->state.GetN(); //packets in flight
-                    unsigned int recWindow = cxn->state.GetRwnd(); //receiver congestion window
-                    size_t sndWindow = cxn->state.SendBuffer.GetSize(); //sender congestion window
-
-                    while(numInflight < GBN && sndWindow != 0 && recWindow != 0) //GBN is a macro defined at the top
-                    {
-                      cerr << "\n numInflight: " << numInflight << endl;
-                      cerr << "\n recWindow: " << recWindow << endl;
-                      cerr << "\n sndWindow: " << sndWindow << endl;
-                      sendFlag = 0;
-
-                      // if MSS < recWindow and MSS < sndWindow
-                      // space in recWindow and sndWindow
-                      if(MSS < recWindow && MSS < sndWindow)
-                      {
-                        cerr << "There is still space in the receiver window and sender window" << endl; 
-                        data = cxn->state.SendBuffer.Extract(numInflight, MSS); //extract data of size MSS from send buffer (offset of # packets inflight)
-                        // set new sequence number
-                        // move on to the next set of packets
-                        numInflight = numInflight + MSS;
-                        CLR_SYN(sendFlag);
-                        SET_ACK(sendFlag);
-			                  SET_PSH(sendFlag);
-                        sndPacket = MakePacket(data, cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, SEND_BUF_SIZE(cxn->state), sendFlag);
-
-                        cerr << "Last last sent: " << cxn->state.GetLastSent() << endl;
-                        cxn->state.SetLastSent(cxn->state.GetLastSent() + MSS); //adjust LastSent to account for the MSS just sent
-                        cerr << "Last sent: " << cxn->state.GetLastSent() << endl;
-                      }
-                      // else there space is not enough space in sender window or receiver window
-                      else
-                      {
-                        cerr << "Limited space in either sender window or receiver window" << endl;
-                        data = cxn->state.SendBuffer.Extract(numInflight, min((int)recWindow, (int)sndWindow)); //extract data of size min(windows) from send buffer
-                        // set new sequence number
-                        // move on to the next set of packets
-                        numInflight = numInflight + min((int)recWindow, (int)sndWindow);
-                        CLR_SYN(sendFlag);
-                        SET_ACK(sendFlag);
-			                  SET_PSH(sendFlag);
-                        sndPacket = MakePacket(data, cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, SEND_BUF_SIZE(cxn->state), sendFlag);
-                        cxn->state.SetLastSent(cxn->state.GetLastSent() + min((int)recWindow, (int)sndWindow));
-                      }
-
-                      MinetSend(mux, sndPacket); //send the packet to mus
-                      
-                      recWindow = recWindow - numInflight;
-                      sndWindow = sndWindow - numInflight;                
-
-                      cerr << "\n numInflight: " << numInflight << endl;
-                      cerr << "recWindow: " << recWindow << endl;
-                      cerr << "sndWindow: " << sndWindow << endl;
-                      // set timeout LOOK IN THIS TIMER THING
-                      cxn->bTmrActive = true;
-                      cxn->timeout = Time() + RTT;
-                    }
-
-                    cxn->state.N = numInflight;
+                    sendWithFlowControl(cxn, mux);
                   }
                   
                 }
@@ -828,68 +772,7 @@ int main(int argc, char *argv[])
             MinetSend(sock, res);
 
             // send data from buffer using "Go Back N"
-            unsigned int numInflight = 0; // packets in flight
-            unsigned int recWindow = cxn->state.GetRwnd(); // receiver congestion window
-            size_t sndWindow = cxn->state.SendBuffer.GetSize(); // sender congestion window
-
-            cerr << "\n outside of gbn loop\n";
-            cerr << "numInflight: " << numInflight << endl;
-            cerr << "recWindow: " << recWindow << endl;
-            cerr << "sndWindow: " << sndWindow << endl;
-            cerr << "last SENT: " << cxn->state.GetLastSent() << endl;
-            cerr << "last ACKED: " << cxn->state.GetLastAcked() << endl;
-            
-            // iterate through all the packets
-            Buffer data;
-            while(numInflight < GBN && sndWindow != 0 && recWindow != 0) //GBN is a macro defined at the top (16)
-            {
-              cerr << "\n   ~~~ SOCK: WRITE: GBN LOOP ~~~\n";
-              // if MSS < recWindow and MSS < sndWindow
-              // space in recWindow and sndWindow
-              if(MSS < recWindow && MSS < sndWindow)
-              {
-                cerr << "There is still space in the receiver window and sender window" << endl;
-                data = cxn->state.SendBuffer.Extract(numInflight, MSS); //extract data of size MSS from send buffer (offset of # packets inflight)
-                // set new seq_n
-                // move on to the next set of packets
-                numInflight = numInflight + MSS;
-                CLR_SYN(sendFlag);
-                SET_ACK(sendFlag);
-		            SET_PSH(sendFlag);
-                sndPacket = MakePacket(data, cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, SEND_BUF_SIZE(cxn->state), sendFlag);
-
-                cerr << "Last last sent: " << cxn->state.GetLastSent() << endl; 
-                cxn->state.SetLastSent(cxn->state.GetLastSent() + MSS); //adjust LastSent to account for the MSS just sent
-                cerr << "Last sent: " << cxn->state.GetLastSent() << endl;
-              }
-              // else there space is not enough space in sender window or receiver window
-              else
-              {
-                cerr << "Limited space in either sender window or receiver window" << endl;
-                data = cxn->state.SendBuffer.Extract(numInflight, min((int)recWindow, (int)sndWindow)); //extract data of size min(windows) from send buffer
-                // set new seq_n
-                // move on to the next set of packets
-                numInflight = numInflight + min((int)recWindow, (int)sndWindow);
-                CLR_SYN(sendFlag);
-                SET_ACK(sendFlag);
-		            SET_PSH(sendFlag);
-                sndPacket = MakePacket(data, cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, SEND_BUF_SIZE(cxn->state), sendFlag);
-                cxn->state.SetLastSent(cxn->state.GetLastSent() + min((int)recWindow, (int)sndWindow));
-              }
-
-              MinetSend(mux, sndPacket); //send the packet to mux
-
-              recWindow = recWindow - numInflight;
-              sndWindow = sndWindow - numInflight;                
-
-              cerr << "\n numInflight: " << numInflight << endl;
-              cerr << "recWindow: " << recWindow << endl;
-              cerr << "sndWindow: " << sndWindow << endl;
-              // set timeout
-              //NEED TO SET TIMEOUT FOR THIS TOO???
-            }
-
-            cxn->state.N = numInflight;
+            sendWithFlowControl(cxn, mux);
           }
           else
           {
