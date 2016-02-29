@@ -30,7 +30,7 @@ using std::max;
 
 #define TMR_TRIES 5
 #define MSS 536
-#define GBN MSS*16
+#define GBN MSS*8
 #define RTT 3
 
 
@@ -43,7 +43,7 @@ void sendWithFlowControl(ConnectionList<TCPState>::iterator cxn, MinetHandle mux
 void SendPacket(MinetHandle handle, Buffer data, Connection conn, unsigned int seq_n, unsigned int ack_n, size_t win_size, unsigned char flag);
 Packet ReceivePacket(MinetHandle handle); 
 
-//         ~~~~~ MAIN ~~~~~                
+//          ~~~~~ MAIN ~~~~~                
 
 int main(int argc, char *argv[])
 {
@@ -90,7 +90,6 @@ int main(int argc, char *argv[])
         Time curr_time = Time();
         if (cxn->bTmrActive == true && cxn->timeout < curr_time)
         {
-          // CAN GET RID OF THIS?
           // if there are no more timer tries for this state
           if (cxn->state.ExpireTimerTries()) //true if no more timer tries
           {
@@ -358,11 +357,6 @@ int main(int argc, char *argv[])
 
               SET_ACK(sendFlag); //send back an ACK for the FIN received
               SendPacket(mux, Buffer(NULL, 0), conn, sendSeqNum, sendAckNum, cxn->state.GetLastRecvd(), sendFlag);
-
-              //might include later for debugging
-              // res.type = CLOSE;
-              // res.error = EOK; 
-              // MinetSend(sock, res); 
             }
             //else, is a dataflow packet
             else
@@ -427,7 +421,6 @@ int main(int argc, char *argv[])
                   // send some of the information in the buffer if there is an overflow in the sendbuffer
                   if (cxn->state.SendBuffer.GetSize() - cxn->state.GetN() > 0)
                   {
-                    //WHAT IS STATE.GETN() or STATE.N???
                     sendWithFlowControl(cxn, mux);
                   }
                   
@@ -798,14 +791,12 @@ void sendWithFlowControl(ConnectionList<TCPState>::iterator cxn, MinetHandle mux
     unsigned char sendFlag = 0;
     Packet sndPacket;
 
-    // if MSS < recWindow and MSS < sndWindow
-    // space in recWindow and sndWindow
+    // if MSS < recWindow and MSS < sndWindow, there is still space in both the recWindow and sndWindow
     if(MSS < recWindow && MSS < sndWindow)
     {
       cerr << "There is still space in the receiver window and sender window" << endl; 
       data = cxn->state.SendBuffer.Extract(numInflight, MSS); //extract data of size MSS from send buffer (offset of # packets inflight)
-      // set new sequence number
-      // move on to the next set of packets
+      // set the new sequence number and then move on to the next set of packets
       numInflight = numInflight + MSS;
       CLR_SYN(sendFlag);
       SET_ACK(sendFlag);
@@ -821,8 +812,7 @@ void sendWithFlowControl(ConnectionList<TCPState>::iterator cxn, MinetHandle mux
     {
       cerr << "Limited space in either sender window or receiver window" << endl;
       data = cxn->state.SendBuffer.Extract(numInflight, min((int)recWindow, (int)sndWindow)); //extract data of size min(windows) from send buffer
-      // set new sequence number
-      // move on to the next set of packets
+      // set the new sequence number and then move on to the next set of packets
       numInflight = numInflight + min((int)recWindow, (int)sndWindow);
       CLR_SYN(sendFlag);
       SET_ACK(sendFlag);
@@ -831,7 +821,7 @@ void sendWithFlowControl(ConnectionList<TCPState>::iterator cxn, MinetHandle mux
       cxn->state.SetLastSent(cxn->state.GetLastSent() + min((int)recWindow, (int)sndWindow));
     }
 
-    MinetSend(mux, sndPacket); //send the packet to mus
+    MinetSend(mux, sndPacket); //send the packet to mux
     
     recWindow = recWindow - numInflight;
     sndWindow = sndWindow - numInflight;                
@@ -839,7 +829,8 @@ void sendWithFlowControl(ConnectionList<TCPState>::iterator cxn, MinetHandle mux
     cerr << "\n numInflight: " << numInflight << endl;
     cerr << "recWindow: " << recWindow << endl;
     cerr << "sndWindow: " << sndWindow << endl;
-    // set timeout LOOK IN THIS TIMER THING
+    
+    //set a timer that times out
     cxn->bTmrActive = true;
     cxn->timeout = Time() + RTT;
   }
