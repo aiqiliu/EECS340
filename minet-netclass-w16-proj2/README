@@ -18,3 +18,11 @@ Agam Gupta:
 Aiqi Liu:
 •  Implemented parts 16, 24, 26
 •  Read about RFC793 and Minet TCP/IP Stack, and informed team members of the state transitions
+
+Note about the program:
+•  Needs to disconnect once in a while
+•  The ncat message needs to be greater than 4 letters
+
+
+
+
