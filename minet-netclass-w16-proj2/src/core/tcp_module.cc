@@ -378,8 +378,10 @@ int main(int argc, char *argv[])
                     cxn->state.SetLastRecvd(sendAckNum);
                   }
 
+                  //maximum data size we are going to
+                  unsigned int dataSizeToSend = min(recvBufferSize, data.GetSize());
                   //grabbing the next sequence number to send 
-                  sendSeqNum = cxn->state.GetLastSent() + min(recvBufferSize, data.GetSize());
+                  sendSeqNum = cxn->state.GetLastSent() + dataSizeToSend;
                   cxn->state.SetLastSent(sendSeqNum);
 
                   //send an empty packet with ACK flag to mux to acknowledge the last received packet
@@ -390,7 +392,8 @@ int main(int argc, char *argv[])
                   res.type = WRITE;
                   res.connection = conn;
                   res.data = cxn->state.RecvBuffer; //send data in recvbuffer to sock
-                  res.bytes = cxn->state.RecvBuffer.GetSize();
+                  res.bytes = dataSizeToSend;
+                  //res.bytes = cxn->state.RecvBuffer.GetSize();
                   res.error = EOK;
                   MinetSend(sock, res);
                 }
