@@ -77,7 +77,7 @@ Packet MakePacket(Buffer data, Connection conn, unsigned int seq_n, unsigned int
   return sndPacket;
 }
 
-void sendWithFlowControl(ConnectionToStateMapping<TCPState> cxn, MinetHandle mux) {
+void sendWithFlowControl(ConnectionList<TCPState>::iterator cxn, MinetHandle mux) {
   unsigned int numInflight = cxn->state.GetN(); //packets in flight
   unsigned int recWindow = cxn->state.GetRwnd(); //receiver congestion window
   size_t sndWindow = cxn->state.SendBuffer.GetSize(); //sender congestion window
@@ -88,7 +88,7 @@ void sendWithFlowControl(ConnectionToStateMapping<TCPState> cxn, MinetHandle mux
     cerr << "\n numInflight: " << numInflight << endl;
     cerr << "\n recWindow: " << recWindow << endl;
     cerr << "\n sndWindow: " << sndWindow << endl;
-    sendFlag = 0;
+    unsigned char sendFlag = 0;
 
     // if MSS < recWindow and MSS < sndWindow
     // space in recWindow and sndWindow
@@ -102,7 +102,7 @@ void sendWithFlowControl(ConnectionToStateMapping<TCPState> cxn, MinetHandle mux
       CLR_SYN(sendFlag);
       SET_ACK(sendFlag);
       SET_PSH(sendFlag);
-      sndPacket = MakePacket(data, cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, SEND_BUF_SIZE(cxn->state), sendFlag);
+      Packet sndPacket = MakePacket(data, cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, SEND_BUF_SIZE(cxn->state), sendFlag);
 
       cerr << "Last last sent: " << cxn->state.GetLastSent() << endl;
       cxn->state.SetLastSent(cxn->state.GetLastSent() + MSS); //adjust LastSent to account for the MSS just sent
@@ -119,7 +119,7 @@ void sendWithFlowControl(ConnectionToStateMapping<TCPState> cxn, MinetHandle mux
       CLR_SYN(sendFlag);
       SET_ACK(sendFlag);
       SET_PSH(sendFlag);
-      sndPacket = MakePacket(data, cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, SEND_BUF_SIZE(cxn->state), sendFlag);
+      Packet sndPacket = MakePacket(data, cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, SEND_BUF_SIZE(cxn->state), sendFlag);
       cxn->state.SetLastSent(cxn->state.GetLastSent() + min((int)recWindow, (int)sndWindow));
     }
 
@@ -241,7 +241,7 @@ int main(int argc, char *argv[])
                 if (cxn->state.N > 0)
                 {
                   cerr << "!!! TIMEOUT: ESTABLISHED STATE !!! RE-SEND DATA USING GBN !!!" << endl;
-                  sendWithFlowControl(cxn mux);
+                  sendWithFlowControl(cxn, mux);
                 }
                 // otherwise just need to resend ACK
                 else
