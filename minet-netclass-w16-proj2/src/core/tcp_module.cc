@@ -349,6 +349,12 @@ int main(int argc, char *argv[])
 
               SET_ACK(sendFlag); //send back an ACK for the FIN received
               SendPacket(mux, Buffer(NULL, 0), conn, sendSeqNum, sendAckNum, cxn->state.GetRwnd(), sendFlag);
+
+              //sending a request to the application layer asking it to verify closing a connection
+              res.type = WRITE;
+              res.bytes = 0;
+              res.error = EOK;
+              MinetSend(sock, res);
             }
             //else, is a dataflow packet
             else
@@ -432,25 +438,25 @@ int main(int argc, char *argv[])
             cerr << "\n   ~~~ MUX: CLOSE_WAIT STATE ~~~\n";
             //at this stage, need to wait for local user to terminate connection, then we send our own FIN
 
-            if (IS_FIN(receivedFlag))
-            {
-              // send a fin ack back
-              sendSeqNum = cxn->state.GetLastSent() + data.GetSize() + 1;
+            // if (IS_FIN(receivedFlag))
+            // {
+            //   // send a fin ack back
+            //   sendSeqNum = cxn->state.GetLastSent() + data.GetSize() + 1;
 
-              cxn->state.SetState(LAST_ACK);
-              cxn->state.SetLastRecvd(recSeqNum);
-              cerr << "Last last sent: " << cxn->state.GetLastSent() << endl;
-              cxn->state.SetLastSent(sendSeqNum);
-              cerr << "Last sent: " << cxn->state.GetLastSent() << endl;
+            //   cxn->state.SetState(LAST_ACK);
+            //   cxn->state.SetLastRecvd(recSeqNum);
+            //   cerr << "Last last sent: " << cxn->state.GetLastSent() << endl;
+            //   cxn->state.SetLastSent(sendSeqNum);
+            //   cerr << "Last sent: " << cxn->state.GetLastSent() << endl;
 
-              // timeout stuff
-              cxn->bTmrActive = true;
-              cxn->timeout = Time() + RTT;
-              cxn->state.SetTimerTries(TMR_TRIES);
+            //   // timeout stuff
+            //   cxn->bTmrActive = true;
+            //   cxn->timeout = Time() + RTT;
+            //   cxn->state.SetTimerTries(TMR_TRIES);
 
-              SET_FIN(sendFlag);
-              SendPacket(mux, Buffer(NULL, 0), conn, sendSeqNum, sendAckNum, cxn->state.GetRwnd(), sendFlag);
-            }
+            //   SET_FIN(sendFlag);
+            //   SendPacket(mux, Buffer(NULL, 0), conn, sendSeqNum, sendAckNum, cxn->state.GetRwnd(), sendFlag);
+            // }
           }
           break;
           case FIN_WAIT1: //this state is after the client actively sent a FIN to the other user and is waiting for a response
@@ -500,7 +506,7 @@ int main(int argc, char *argv[])
             cerr << "\n   ~~~ MUX: LAST_ACK STATE ~~~\n";
             if (IS_ACK(receivedFlag))
             {
-              cxn->state.SetState(CLOSED);
+              cxn->state.SetState(LISTEN);
               cxn->state.SetLastAcked(recAckNum - 1);
               cxn->state.SetLastRecvd(recSeqNum);
             }
@@ -668,10 +674,15 @@ int main(int argc, char *argv[])
         {
           cerr << "\n   ~~~ SOCK: CLOSE ~~~\n";
           ConnectionList<TCPState>::iterator cxn = connectionsList.FindMatching(req.connection);
-          if (cxn->state.GetState() == ESTABLISHED) //established connection, now call for close 
+          if (cxn->state.GetState() == CLOSE_WAIT) //established connection, now call for close 
           {
+            // timeout stuff
+            cxn->bTmrActive = true;
+            cxn->timeout = Time() + RTT;
+            cxn->state.SetTimerTries(TMR_TRIES);
+
             unsigned char sendFlag;
-            cxn->state.SetState(FIN_WAIT1);
+            cxn->state.SetState(LAST_ACK);
             SET_FIN(sendFlag); //send fin to activate closing
             SendPacket(mux, Buffer(NULL, 0), cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, cxn->state.GetRwnd(), sendFlag);
           }
