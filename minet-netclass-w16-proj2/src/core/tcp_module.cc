@@ -37,123 +37,11 @@ using std::max;
 #define SEND_BUF_SIZE(state) (state.TCP_BUFFER_SIZE - state.SendBuffer.GetSize())
 
 
-//           ~~~~~ HELPER ~~~~~
-
-//helper function to make a packet
-Packet MakePacket(Buffer data, Connection conn, unsigned int seq_n, unsigned int ack_n, size_t win_size, unsigned char flag)
-{
-  // Make Packet
-  unsigned size = MIN_MACRO(IP_PACKET_MAX_LENGTH-TCP_HEADER_MAX_LENGTH, data.GetSize());
-  Packet sndPacket(data.ExtractFront(size));
-
-  // Make and push IP header
-  IPHeader sendIPheader;
-  sendIPheader.SetProtocol(IP_PROTO_TCP);
-  sendIPheader.SetSourceIP(conn.src);
-  sendIPheader.SetDestIP(conn.dest);
-  sendIPheader.SetTotalLength(size + TCP_HEADER_BASE_LENGTH + IP_HEADER_BASE_LENGTH);
-  sndPacket.PushFrontHeader(sendIPheader);
-
-  // Make and push TCP header
-  TCPHeader sendTCPheader;
-  sendTCPheader.SetSourcePort(conn.srcport, sndPacket);
-  sendTCPheader.SetDestPort(conn.destport, sndPacket);
-  sendTCPheader.SetHeaderLen(TCP_HEADER_BASE_LENGTH/4, sndPacket);
-  sendTCPheader.SetFlags(flag, sndPacket);
-  sendTCPheader.SetWinSize(win_size, sndPacket); // to fix
-  sendTCPheader.SetSeqNum(seq_n, sndPacket);
-  if (IS_ACK(flag))
-  {
-    sendTCPheader.SetAckNum(ack_n, sndPacket);
-  }
-  sendTCPheader.RecomputeChecksum(sndPacket);
-  sndPacket.PushBackHeader(sendTCPheader);
-
-  cerr << "~~~MAKING PACKET~~~" << endl;
-  cerr << sendIPheader << endl;
-  cerr << sendTCPheader << endl;
-  cerr << sndPacket << endl;
-
-  return sndPacket;
-}
-
-void sendWithFlowControl(ConnectionList<TCPState>::iterator cxn, MinetHandle mux) {
-  unsigned int numInflight = cxn->state.GetN(); //packets in flight
-  unsigned int recWindow = cxn->state.GetRwnd(); //receiver congestion window
-  size_t sndWindow = cxn->state.SendBuffer.GetSize(); //sender congestion window
-  Buffer data;
-
-  while(numInflight < GBN && sndWindow != 0 && recWindow != 0) //GBN is a macro defined at the top
-  {
-    cerr << "\n numInflight: " << numInflight << endl;
-    cerr << "\n recWindow: " << recWindow << endl;
-    cerr << "\n sndWindow: " << sndWindow << endl;
-    unsigned char sendFlag = 0;
-    Packet sndPacket;
-
-    // if MSS < recWindow and MSS < sndWindow
-    // space in recWindow and sndWindow
-    if(MSS < recWindow && MSS < sndWindow)
-    {
-      cerr << "There is still space in the receiver window and sender window" << endl; 
-      data = cxn->state.SendBuffer.Extract(numInflight, MSS); //extract data of size MSS from send buffer (offset of # packets inflight)
-      // set new sequence number
-      // move on to the next set of packets
-      numInflight = numInflight + MSS;
-      CLR_SYN(sendFlag);
-      SET_ACK(sendFlag);
-      SET_PSH(sendFlag);
-      sndPacket = MakePacket(data, cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, SEND_BUF_SIZE(cxn->state), sendFlag);
-
-      cerr << "Last last sent: " << cxn->state.GetLastSent() << endl;
-      cxn->state.SetLastSent(cxn->state.GetLastSent() + MSS); //adjust LastSent to account for the MSS just sent
-      cerr << "Last sent: " << cxn->state.GetLastSent() << endl;
-    }
-    // else there space is not enough space in sender window or receiver window
-    else
-    {
-      cerr << "Limited space in either sender window or receiver window" << endl;
-      data = cxn->state.SendBuffer.Extract(numInflight, min((int)recWindow, (int)sndWindow)); //extract data of size min(windows) from send buffer
-      // set new sequence number
-      // move on to the next set of packets
-      numInflight = numInflight + min((int)recWindow, (int)sndWindow);
-      CLR_SYN(sendFlag);
-      SET_ACK(sendFlag);
-      SET_PSH(sendFlag);
-      sndPacket = MakePacket(data, cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, SEND_BUF_SIZE(cxn->state), sendFlag);
-      cxn->state.SetLastSent(cxn->state.GetLastSent() + min((int)recWindow, (int)sndWindow));
-    }
-
-    MinetSend(mux, sndPacket); //send the packet to mus
-    
-    recWindow = recWindow - numInflight;
-    sndWindow = sndWindow - numInflight;                
-
-    cerr << "\n numInflight: " << numInflight << endl;
-    cerr << "recWindow: " << recWindow << endl;
-    cerr << "sndWindow: " << sndWindow << endl;
-    // set timeout LOOK IN THIS TIMER THING
-    cxn->bTmrActive = true;
-    cxn->timeout = Time() + RTT;
-  }
-
-  cxn->state.N = numInflight;
-}
-
-//helper function to make packet and send it using Minet
-void SendPacket(MinetHandle handle, Buffer data, Connection conn, unsigned int seq_n, unsigned int ack_n, size_t win_size, unsigned char flag)
-{
-  Packet pack = MakePacket(data, conn, seq_n, ack_n, win_size, flag); // ack
-  MinetSend(handle, pack);
-}
-
-//helper function to receive a packet from a handle using minet and save it to a packet
-Packet ReceivePacket(MinetHandle handle) 
-{
-  Packet pack;
-  MinetReceive(handle, pack);
-  return pack;
-}
+//           ~~~~~ HELPERS ~~~~~
+Packet MakePacket(Buffer data, Connection conn, unsigned int seq_n, unsigned int ack_n, size_t win_size, unsigned char flag);
+void sendWithFlowControl(ConnectionList<TCPState>::iterator cxn, MinetHandle mux);
+void SendPacket(MinetHandle handle, Buffer data, Connection conn, unsigned int seq_n, unsigned int ack_n, size_t win_size, unsigned char flag);
+Packet ReceivePacket(MinetHandle handle); 
 
 //         ~~~~~ MAIN ~~~~~                
 
@@ -855,4 +743,121 @@ int main(int argc, char *argv[])
     }
   }
   return 0;
+}
+
+
+//helper function to make a packet
+Packet MakePacket(Buffer data, Connection conn, unsigned int seq_n, unsigned int ack_n, size_t win_size, unsigned char flag)
+{
+  // Make Packet
+  unsigned size = MIN_MACRO(IP_PACKET_MAX_LENGTH-TCP_HEADER_MAX_LENGTH, data.GetSize());
+  Packet sndPacket(data.ExtractFront(size));
+
+  // Make and push IP header
+  IPHeader sendIPheader;
+  sendIPheader.SetProtocol(IP_PROTO_TCP);
+  sendIPheader.SetSourceIP(conn.src);
+  sendIPheader.SetDestIP(conn.dest);
+  sendIPheader.SetTotalLength(size + TCP_HEADER_BASE_LENGTH + IP_HEADER_BASE_LENGTH);
+  sndPacket.PushFrontHeader(sendIPheader);
+
+  // Make and push TCP header
+  TCPHeader sendTCPheader;
+  sendTCPheader.SetSourcePort(conn.srcport, sndPacket);
+  sendTCPheader.SetDestPort(conn.destport, sndPacket);
+  sendTCPheader.SetHeaderLen(TCP_HEADER_BASE_LENGTH/4, sndPacket);
+  sendTCPheader.SetFlags(flag, sndPacket);
+  sendTCPheader.SetWinSize(win_size, sndPacket); // to fix
+  sendTCPheader.SetSeqNum(seq_n, sndPacket);
+  if (IS_ACK(flag))
+  {
+    sendTCPheader.SetAckNum(ack_n, sndPacket);
+  }
+  sendTCPheader.RecomputeChecksum(sndPacket);
+  sndPacket.PushBackHeader(sendTCPheader);
+
+  cerr << "~~~MAKING PACKET~~~" << endl;
+  cerr << sendIPheader << endl;
+  cerr << sendTCPheader << endl;
+  cerr << sndPacket << endl;
+
+  return sndPacket;
+}
+
+void sendWithFlowControl(ConnectionList<TCPState>::iterator cxn, MinetHandle mux) {
+  unsigned int numInflight = cxn->state.GetN(); //packets in flight
+  unsigned int recWindow = cxn->state.GetRwnd(); //receiver congestion window
+  size_t sndWindow = cxn->state.SendBuffer.GetSize(); //sender congestion window
+  Buffer data;
+
+  while(numInflight < GBN && sndWindow != 0 && recWindow != 0) //GBN is a macro defined at the top
+  {
+    cerr << "\n numInflight: " << numInflight << endl;
+    cerr << "\n recWindow: " << recWindow << endl;
+    cerr << "\n sndWindow: " << sndWindow << endl;
+    unsigned char sendFlag = 0;
+    Packet sndPacket;
+
+    // if MSS < recWindow and MSS < sndWindow
+    // space in recWindow and sndWindow
+    if(MSS < recWindow && MSS < sndWindow)
+    {
+      cerr << "There is still space in the receiver window and sender window" << endl; 
+      data = cxn->state.SendBuffer.Extract(numInflight, MSS); //extract data of size MSS from send buffer (offset of # packets inflight)
+      // set new sequence number
+      // move on to the next set of packets
+      numInflight = numInflight + MSS;
+      CLR_SYN(sendFlag);
+      SET_ACK(sendFlag);
+      SET_PSH(sendFlag);
+      sndPacket = MakePacket(data, cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, SEND_BUF_SIZE(cxn->state), sendFlag);
+
+      cerr << "Last last sent: " << cxn->state.GetLastSent() << endl;
+      cxn->state.SetLastSent(cxn->state.GetLastSent() + MSS); //adjust LastSent to account for the MSS just sent
+      cerr << "Last sent: " << cxn->state.GetLastSent() << endl;
+    }
+    // else there space is not enough space in sender window or receiver window
+    else
+    {
+      cerr << "Limited space in either sender window or receiver window" << endl;
+      data = cxn->state.SendBuffer.Extract(numInflight, min((int)recWindow, (int)sndWindow)); //extract data of size min(windows) from send buffer
+      // set new sequence number
+      // move on to the next set of packets
+      numInflight = numInflight + min((int)recWindow, (int)sndWindow);
+      CLR_SYN(sendFlag);
+      SET_ACK(sendFlag);
+      SET_PSH(sendFlag);
+      sndPacket = MakePacket(data, cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, SEND_BUF_SIZE(cxn->state), sendFlag);
+      cxn->state.SetLastSent(cxn->state.GetLastSent() + min((int)recWindow, (int)sndWindow));
+    }
+
+    MinetSend(mux, sndPacket); //send the packet to mus
+    
+    recWindow = recWindow - numInflight;
+    sndWindow = sndWindow - numInflight;                
+
+    cerr << "\n numInflight: " << numInflight << endl;
+    cerr << "recWindow: " << recWindow << endl;
+    cerr << "sndWindow: " << sndWindow << endl;
+    // set timeout LOOK IN THIS TIMER THING
+    cxn->bTmrActive = true;
+    cxn->timeout = Time() + RTT;
+  }
+
+  cxn->state.N = numInflight;
+}
+
+//helper function to make packet and send it using Minet
+void SendPacket(MinetHandle handle, Buffer data, Connection conn, unsigned int seq_n, unsigned int ack_n, size_t win_size, unsigned char flag)
+{
+  Packet pack = MakePacket(data, conn, seq_n, ack_n, win_size, flag); // ack
+  MinetSend(handle, pack);
+}
+
+//helper function to receive a packet from a handle using minet and save it to a packet
+Packet ReceivePacket(MinetHandle handle) 
+{
+  Packet pack;
+  MinetReceive(handle, pack);
+  return pack;
 }
