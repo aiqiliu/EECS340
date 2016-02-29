@@ -241,7 +241,7 @@ int main(int argc, char *argv[])
           else
           {
             Packet sndPacket;
-            unsigned char set_flag = 1, unset_flag = 0, sendFlag;
+            unsigned char set_flag = 1, unset_flag = 0, sendFlag = 0;
             switch(cxn->state.GetState())
             {
               case SYN_RCVD:
