@@ -352,6 +352,7 @@ int main(int argc, char *argv[])
 
               //sending a request to the application layer asking it to verify closing a connection
               res.type = WRITE;
+              res.connection = conn;
               res.bytes = 0;
               res.error = EOK;
               MinetSend(sock, res);
