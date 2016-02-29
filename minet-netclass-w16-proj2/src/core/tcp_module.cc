@@ -30,7 +30,7 @@ using std::max;
 
 #define TMR_TRIES 5
 #define MSS 536
-#define GBN MSS*8
+#define MAX_INFLIGHT MSS*8
 #define RTT 3
 
 
@@ -164,6 +164,7 @@ int main(int argc, char *argv[])
               {
                 cerr << "!!! TIMEOUT: LAST_ACK !!! RE-SENDING FIN !!!" << endl;
                 SET_FIN(sendFlag);
+                SET_ACK(sendFlag);
                 SendPacket(mux, Buffer(NULL, 0), cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd(), SEND_BUF_SIZE(cxn->state), sendFlag);
               }
               break;
@@ -342,9 +343,7 @@ int main(int argc, char *argv[])
               sendSeqNum = cxn->state.GetLastSent() + data.GetSize() + 1;
 
               cxn->state.SetState(CLOSE_WAIT); //passive close
-              cerr << "Last last sent: " << cxn->state.GetLastSent() << endl;
               cxn->state.SetLastSent(sendSeqNum);
-              cerr << "Last sent: " << cxn->state.GetLastSent() << endl;
               cxn->state.SetLastRecvd(recSeqNum);
 
               SET_ACK(sendFlag); //send back an ACK for the FIN received
@@ -438,26 +437,6 @@ int main(int argc, char *argv[])
           {
             cerr << "\n   ~~~ MUX: CLOSE_WAIT STATE ~~~\n";
             //at this stage, need to wait for local user to terminate connection, then we send our own FIN
-
-            // if (IS_FIN(receivedFlag))
-            // {
-            //   // send a fin ack back
-            //   sendSeqNum = cxn->state.GetLastSent() + data.GetSize() + 1;
-
-            //   cxn->state.SetState(LAST_ACK);
-            //   cxn->state.SetLastRecvd(recSeqNum);
-            //   cerr << "Last last sent: " << cxn->state.GetLastSent() << endl;
-            //   cxn->state.SetLastSent(sendSeqNum);
-            //   cerr << "Last sent: " << cxn->state.GetLastSent() << endl;
-
-            //   // timeout stuff
-            //   cxn->bTmrActive = true;
-            //   cxn->timeout = Time() + RTT;
-            //   cxn->state.SetTimerTries(TMR_TRIES);
-
-            //   SET_FIN(sendFlag);
-            //   SendPacket(mux, Buffer(NULL, 0), conn, sendSeqNum, sendAckNum, cxn->state.GetRwnd(), sendFlag);
-            // }
           }
           break;
           case FIN_WAIT1: //this state is after the client actively sent a FIN to the other user and is waiting for a response
@@ -468,10 +447,8 @@ int main(int argc, char *argv[])
               sendSeqNum = cxn->state.GetLastSent() + data.GetSize() + 1;
 
               cxn->state.SetState(CLOSING); //set state to closing
-              cxn->state.SetLastRecvd(recSeqNum); //can replace these code with helper 
-              cerr << "Last last sent: " << cxn->state.GetLastSent() << endl;
+              cxn->state.SetLastRecvd(recSeqNum); 
               cxn->state.SetLastSent(sendSeqNum);
-              cerr << "Last sent: " << cxn->state.GetLastSent() << endl;
 
               // set timeout
               cxn->bTmrActive = true;
@@ -685,6 +662,7 @@ int main(int argc, char *argv[])
             unsigned char sendFlag;
             cxn->state.SetState(LAST_ACK);
             SET_FIN(sendFlag); //send fin to activate closing
+            SET_ACK(sendFlag);
             SendPacket(mux, Buffer(NULL, 0), cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, cxn->state.GetRwnd(), sendFlag);
           }
           cerr << "\n   ~~~ SOCK: END CLOSE ~~~\n";
@@ -782,7 +760,7 @@ void sendWithFlowControl(ConnectionList<TCPState>::iterator cxn, MinetHandle mux
   size_t sndWindow = cxn->state.SendBuffer.GetSize(); //sender congestion window
   Buffer data;
 
-  while(numInflight < GBN && sndWindow != 0 && recWindow != 0) 
+  while(numInflight < MAX_INFLIGHT && sndWindow != 0 && recWindow != 0) 
   {
     cerr << "\n numInflight: " << numInflight << endl;
     cerr << "\n recWindow: " << recWindow << endl;
@@ -802,9 +780,7 @@ void sendWithFlowControl(ConnectionList<TCPState>::iterator cxn, MinetHandle mux
       SET_PSH(sendFlag);
       sndPacket = MakePacket(data, cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, SEND_BUF_SIZE(cxn->state), sendFlag);
 
-      cerr << "Last to last sent: " << cxn->state.GetLastSent() << endl;
       cxn->state.SetLastSent(cxn->state.GetLastSent() + MSS); //adjust LastSent to account for the MSS just sent
-      cerr << "Last sent: " << cxn->state.GetLastSent() << endl;
     }
     // else there space is not enough space in sender window or receiver window
     else
