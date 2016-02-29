@@ -659,7 +659,6 @@ int main(int argc, char *argv[])
             cxn->timeout = Time() + RTT;
             cxn->state.SetTimerTries(TMR_TRIES);
 
-            unsigned char sendFlag;
             cxn->state.SetState(LAST_ACK);
             SET_FIN(sendFlag); //send fin to activate closing
             SET_ACK(sendFlag);
