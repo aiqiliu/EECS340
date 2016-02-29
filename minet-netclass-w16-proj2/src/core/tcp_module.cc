@@ -159,7 +159,7 @@ Packet ReceivePacket(MinetHandle handle)
 // Helper function to set some properties of a TCP state
 void setState(ConnectionList<TCPState>::iterator cnx_s_map, int& flight, int& receiver_window, size_t& cWind)
 {
-  flight = current_cnx_s_map ->state.GetN();
+  flight = cnx_s_map ->state.GetN();
   receiver_window = cnx_s_map ->state.GetRwnd();
   cWind = cnx_s_map ->state.SendBuffer.GetSize();
 }
@@ -286,7 +286,7 @@ int main(int argc, char *argv[])
               case FIN_WAIT1:
               {
                 cerr << "!!! TIMEOUT: FIN_WAIT1 STATE !!! RE-SENDING FIN !!!" << endl;
-                setFlagValues(unset_flag, uset_flag, unset_flag, unset_flag, set_flag);
+                setFlagValues(unset_flag, unset_flag, unset_flag, unset_flag, set_flag);
                 SendPacket(mux, Buffer(NULL, 0), cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd(), SEND_BUF_SIZE(cxn->state), sendFlag);
               }
               break;
