@@ -1,30 +1,21 @@
 Minet: A User-level Network Stack
 =================================
 
-Copyright (c) 2000 by Peter A. Dinda
+Team member:
+Kevin Cheng - klc954
+Agam Gupta - agf453
+Aiqi Liu - alc342
 
+WORK SPLITUP
+Kevin Cheng:
+•  Implemented part 14, 15, 22, 23, 25
+•  Wrote the bash script for the procedure for building minet and changing the IPAddress in the cfg file
+•  Debugged for the socket layer 
 
-This is a user-level network stack that is intended for use in
-education.  It is not fast, but it tries to be clear and simple.  It
-was developed to support an introductory course in networking at
-Northwestern University, CS 340.  
+Agam Gupta:
+•  Implemented part 12, 13, 20, 21
+•  Create helper functions to make the code more consistent and efficient
 
-More details can be found at
-http://www.cs.northwestern.edu/~pdinda/minet.  The first thing you
-should read is the Minet technical report available at that web site.
-This can be cited as:
-
-P. Dinda, The Minet TCP/IP Stack, Northwestern University Department
-of Computer Science Technical Report NWU-CS-02-08, January, 2002.
-
-A number of people have contributed to the development of Minet, and
-are mentioned in the technical report.  Items that are integrated into
-the current release include:
-
-Minet - the core distribution itself.
-Minet Timeline - A post-mortem tool for looking at Minet log files.
-Minet JavaGUI - A graphical interface to the Minet stack.
-
-
-
-
+Aiqi Liu:
+•  Implemented part 16, 24, 26
+•  Read about RFC793 and Minet TCP/IP Stack, and informed team members of the state transitions
