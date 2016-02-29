@@ -8,14 +8,13 @@ Aiqi Liu - alc342
 
 WORK SPLITUP
 Kevin Cheng:
-•  Implemented part 14, 15, 22, 23, 25
-•  Wrote the bash script for the procedure for building minet and changing the IPAddress in the cfg file
-•  Debugged for the socket layer 
+•  Implemented parts 14, 15, 22, 23, 25
+•  Debugged the MUX layer 
 
 Agam Gupta:
-•  Implemented part 12, 13, 20, 21
+•  Implemented parts 12, 13, 20, 21
 •  Create helper functions to make the code more consistent and efficient
 
 Aiqi Liu:
-•  Implemented part 16, 24, 26
+•  Implemented parts 16, 24, 26
 •  Read about RFC793 and Minet TCP/IP Stack, and informed team members of the state transitions
