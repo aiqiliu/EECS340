@@ -89,6 +89,7 @@ void sendWithFlowControl(ConnectionList<TCPState>::iterator cxn, MinetHandle mux
     cerr << "\n recWindow: " << recWindow << endl;
     cerr << "\n sndWindow: " << sndWindow << endl;
     unsigned char sendFlag = 0;
+    Packet sndPacket;
 
     // if MSS < recWindow and MSS < sndWindow
     // space in recWindow and sndWindow
@@ -102,7 +103,7 @@ void sendWithFlowControl(ConnectionList<TCPState>::iterator cxn, MinetHandle mux
       CLR_SYN(sendFlag);
       SET_ACK(sendFlag);
       SET_PSH(sendFlag);
-      Packet sndPacket = MakePacket(data, cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, SEND_BUF_SIZE(cxn->state), sendFlag);
+      sndPacket = MakePacket(data, cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, SEND_BUF_SIZE(cxn->state), sendFlag);
 
       cerr << "Last last sent: " << cxn->state.GetLastSent() << endl;
       cxn->state.SetLastSent(cxn->state.GetLastSent() + MSS); //adjust LastSent to account for the MSS just sent
@@ -119,7 +120,7 @@ void sendWithFlowControl(ConnectionList<TCPState>::iterator cxn, MinetHandle mux
       CLR_SYN(sendFlag);
       SET_ACK(sendFlag);
       SET_PSH(sendFlag);
-      Packet sndPacket = MakePacket(data, cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, SEND_BUF_SIZE(cxn->state), sendFlag);
+      sndPacket = MakePacket(data, cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, SEND_BUF_SIZE(cxn->state), sendFlag);
       cxn->state.SetLastSent(cxn->state.GetLastSent() + min((int)recWindow, (int)sndWindow));
     }
 
