@@ -558,6 +558,7 @@ int main(int argc, char *argv[])
           ConnectionToStateMapping<TCPState> newConn(req.connection, Time(), connectConn, true); // sets properties for connection, timeout, state, timer
           connectionsList.push_front(newConn); // Add this new connection to the list of connections
          
+	  sendFlag = 0;
           res.type = STATUS;
           res.error = EOK; 
           cerr << "sending to sock"<<endl;
@@ -658,7 +659,8 @@ int main(int argc, char *argv[])
             cxn->bTmrActive = true;
             cxn->timeout = Time() + RTT;
             cxn->state.SetTimerTries(TMR_TRIES);
-
+	    
+	    sendFlag = 0;
             cxn->state.SetState(LAST_ACK);
             SET_FIN(sendFlag); //send fin to activate closing
             SET_ACK(sendFlag);
