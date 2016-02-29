@@ -30,7 +30,7 @@ using std::max;
 
 #define TMR_TRIES 5
 #define MSS 536
-#define MAX_INFLIGHT MSS*8
+#define GBN MSS*8
 #define RTT 3
 
 
@@ -125,11 +125,10 @@ int main(int argc, char *argv[])
               case ESTABLISHED:
               {
                 cerr << "!!! TIMEOUT: ESTABLISHED STATE !!! RE-SENDING DATA !!!" << endl;
-      
-                if (cxn->state.N > 0) //if there are still packets in flight during the timeout
+                if (cxn->state.N > 0) // if there are still packets inflight during the timeout
                 {
-                  cerr << "!!! TIMEOUT: ESTABLISHED STATE !!! RE-SEND DATA USING GO-BACK-N !!!" << endl;
-                  sendWithFlowControl(cxn, mux); //resends data using flow control (Go-Back-N)
+                  cerr << "!!! TIMEOUT: ESTABLISHED STATE !!! RE-SEND DATA USING GBN !!!" << endl;
+                  sendWithFlowControl(cxn, mux); //resends data using flow control (go-back-n)
                 }
                 // otherwise just need to resend ACK
                 else
@@ -186,7 +185,7 @@ int main(int argc, char *argv[])
     {
       MinetSendToMonitor(MinetMonitoringEvent("Unknown event ignored."));
     } 
-    // Data from below the IP layer
+    //  Data from below the IP layer
     else if (event.handle == mux) 
     {
       cerr << "\n~~~ START OF IP LAYER ~~~ \n";
@@ -208,37 +207,35 @@ int main(int argc, char *argv[])
       cerr << receivedPacket << "\n";
 
       // Unpack useful data
-      unsigned char receivedFlag;
-      recTCPheader.GetFlags(receivedFlag);
-
-      unsigned short recWindow;
-      recTCPheader.GetWinSize(recWindow);
-
       Connection conn;
-      // what's the connection class?
-      recTCPheader.GetDestPort(conn.srcport);
-      recTCPheader.GetSourcePort(conn.destport);
-      recIPheader.GetProtocol(conn.protocol);
       recIPheader.GetDestIP(conn.src);
       recIPheader.GetSourceIP(conn.dest);
+      recIPheader.GetProtocol(conn.protocol);
+      recTCPheader.GetDestPort(conn.srcport);
+      recTCPheader.GetSourcePort(conn.destport);
 
-      unsigned int sendAckNum;
-      unsigned int sendSeqNum;
+      unsigned short recWindow; 
+      recTCPheader.GetWinSize(recWindow);
+
       unsigned int recSeqNum;
       unsigned int recAckNum;
+      unsigned int sendAckNum;
+      unsigned int sendSeqNum;
       recTCPheader.GetSeqNum(recSeqNum);
       recTCPheader.GetAckNum(recAckNum);
       // Since ack_n denotes the next packet expected
       sendAckNum = recSeqNum + 1;
 
+      unsigned char receivedFlag;
+      recTCPheader.GetFlags(receivedFlag);
+
       ConnectionList<TCPState>::iterator cxn = connectionsList.FindMatching(conn);
       if (cxn != connectionsList.end() && recTCPheader.IsCorrectChecksum(receivedPacket))
       {   
-        cerr << "Matching connection found!" << endl;
-        recTCPheader.GetHeaderLen((unsigned char&)tcphlen);
+        recTCPheader.GetHeaderLen((unsigned char&)tcphlen); 
         tcphlen -= TCP_HEADER_MAX_LENGTH;
         Buffer data = receivedPacket.GetPayload().ExtractFront(tcphlen); // getting the contents as long as tcphlen from the payload
-        data.Print(cerr);
+        data.Print(cerr); 
         cerr << endl;
 
         unsigned char sendFlag = 0; // SET_SYN function needs a parameter of type unsigned char which is then ORed with 10 (bitwise OR)
@@ -259,12 +256,13 @@ int main(int argc, char *argv[])
             if (IS_SYN(receivedFlag))
             {
               sendSeqNum = rand(); // The sequence number for the packet sent back is randomly chosen
+              
 
               cxn->state.SetState(SYN_RCVD);
               cxn->state.SetLastRecvd(recSeqNum);
               cxn->state.SetLastSent(sendSeqNum); 
 
-              cxn->bTmrActive = true; // Set timer of cxn to active 
+              cxn->bTmrActive = true; // Set timer of cxn to active
               cxn->timeout = Time() + RTT; // To set the timeout interval to be that of 1 RTT starting the current time. This sets a timeout for receiving an ACK from remote side.
               SET_SYN(sendFlag);
               SET_ACK(sendFlag);
@@ -283,7 +281,7 @@ int main(int argc, char *argv[])
             {
               cerr << "Connection is established!" << endl;
               cxn->state.SetState(ESTABLISHED);
-              cxn->state.SetLastRecvd(recSeqNum - 1); //used to keep track of sequence numbers
+              cxn->state.SetLastRecvd(recSeqNum - 1); // used to keep track of sequence numbers
 
               // timer
               cxn->bTmrActive = false;
@@ -303,10 +301,16 @@ int main(int argc, char *argv[])
             cerr << "\n   ~~~ MUX: SYN_SENT STATE ~~~\n";
             if (IS_SYN(receivedFlag) && IS_ACK(receivedFlag))
             {
+              cerr << "Last Acked: " << cxn->state.GetLastAcked() << endl;
+              cerr << "Last Sent: " << cxn->state.GetLastSent() << endl;
+              cerr << "Last Recv: " << cxn->state.GetLastRecvd() << endl;
               sendSeqNum = cxn->state.GetLastSent() + data.GetSize() + 1;
+              cerr << "increment" << data.GetSize() + 1;
+
               cxn->state.SetState(ESTABLISHED);
               cxn->state.SetLastAcked(recAckNum - 1);
               cxn->state.SetLastRecvd(recSeqNum); 
+
 
               SET_ACK(sendFlag);
               SendPacket(mux, Buffer(NULL, 0), conn, sendSeqNum, sendAckNum, SEND_BUF_SIZE(cxn->state), sendFlag);
@@ -547,7 +551,7 @@ int main(int argc, char *argv[])
       cerr << "\n~~~ END OF IP LAYER ~~~ \n";
     }
 
-    //  Data from the above the Socket layer
+    //  Data from above the Socket layer
     else if (event.handle == sock) 
     {
       cerr << "\n~~~ START OF SOCKET LAYER ~~~ \n";
@@ -564,7 +568,7 @@ int main(int argc, char *argv[])
         {
           cerr << "\n   ~~~ SOCK: CONNECT ~~~\n";
 
-          unsigned int initialSeqNum = rand(); 
+          unsigned int initialSeqNum = rand(); // Can make this a specific wierd value rather than the rand() function.
           TCPState connectConn(initialSeqNum, SYN_SENT, TMR_TRIES); //state is SYN_SENT
           connectConn.N = 0; // number of packets allowed in flight
           ConnectionToStateMapping<TCPState> newConn(req.connection, Time(), connectConn, true); // sets properties for connection, timeout, state, timer
@@ -616,7 +620,7 @@ int main(int argc, char *argv[])
               cxn->state.SendBuffer.AddBack(req.data.ExtractFront(sendBufferSize));
 
               res.bytes = sendBufferSize; //size of res.data is the size of the send buffer
-              res.error = EBUF_SPACE; //error to indicate lack of buffer space
+              res.error = EBUF_SPACE; //error to indicate lack fo buffer space
             }
             //otherwise if there is no overflow
             else
@@ -706,9 +710,13 @@ int main(int argc, char *argv[])
           cerr << "\n   ~~~ SOCK: DEFAULT ~~~\n";
           cerr << "\n   ~~~ SOCK: END DEFAULT ~~~\n";
         } 
+          // TODO: responsd to request with
         break;
+
       }
+
       cerr << "\n~~~ END OF SOCKET LAYER ~~~ \n";
+
     }
   }
   return 0;
@@ -718,27 +726,26 @@ int main(int argc, char *argv[])
 //helper function to make a packet
 Packet MakePacket(Buffer data, Connection conn, unsigned int seq_n, unsigned int ack_n, size_t win_size, unsigned char flag)
 {
-  // first create the packet
+  // create the Packet
   unsigned size = MIN_MACRO(IP_PACKET_MAX_LENGTH-TCP_HEADER_MAX_LENGTH, data.GetSize());
   Packet sndPacket(data.ExtractFront(size));
 
-  // then make and push the IP header
+  // then create and push IP header
   IPHeader sendIPheader;
-  sndPacket.PushFrontHeader(sendIPheader);
-  sendIPheader.SetDestIP(conn.dest);
   sendIPheader.SetProtocol(IP_PROTO_TCP);
   sendIPheader.SetSourceIP(conn.src);
+  sendIPheader.SetDestIP(conn.dest);
   sendIPheader.SetTotalLength(size + TCP_HEADER_BASE_LENGTH + IP_HEADER_BASE_LENGTH);
+  sndPacket.PushFrontHeader(sendIPheader);
 
-  // then make and push the TCP header
+  // then create and push TCP header
   TCPHeader sendTCPheader;
-  sendTCPheader.SetFlags(flag, sndPacket);
-  sendTCPheader.SetHeaderLen(TCP_HEADER_BASE_LENGTH/4, sndPacket);
-  sendTCPheader.SetWinSize(win_size, sndPacket);
-  sendTCPheader.SetSeqNum(seq_n, sndPacket);
   sendTCPheader.SetSourcePort(conn.srcport, sndPacket);
   sendTCPheader.SetDestPort(conn.destport, sndPacket);
-
+  sendTCPheader.SetHeaderLen(TCP_HEADER_BASE_LENGTH/4, sndPacket);
+  sendTCPheader.SetFlags(flag, sndPacket);
+  sendTCPheader.SetWinSize(win_size, sndPacket); // to fix
+  sendTCPheader.SetSeqNum(seq_n, sndPacket);
   if (IS_ACK(flag))
   {
     sendTCPheader.SetAckNum(ack_n, sndPacket);
@@ -760,8 +767,11 @@ void sendWithFlowControl(ConnectionList<TCPState>::iterator cxn, MinetHandle mux
   size_t sndWindow = cxn->state.SendBuffer.GetSize(); //sender congestion window
   Buffer data;
 
-  while(numInflight < MAX_INFLIGHT && sndWindow != 0 && recWindow != 0) 
+  while(numInflight < GBN && sndWindow != 0 && recWindow != 0) 
   {
+    cerr << "\n numInflight: " << numInflight << endl;
+    cerr << "\n recWindow: " << recWindow << endl;
+    cerr << "\n sndWindow: " << sndWindow << endl;
     unsigned char sendFlag = 0;
     Packet sndPacket;
 
@@ -777,7 +787,9 @@ void sendWithFlowControl(ConnectionList<TCPState>::iterator cxn, MinetHandle mux
       SET_PSH(sendFlag);
       sndPacket = MakePacket(data, cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, SEND_BUF_SIZE(cxn->state), sendFlag);
 
+      cerr << "Last last sent: " << cxn->state.GetLastSent() << endl;
       cxn->state.SetLastSent(cxn->state.GetLastSent() + MSS); //adjust LastSent to account for the MSS just sent
+      cerr << "Last sent: " << cxn->state.GetLastSent() << endl;
     }
     // else there space is not enough space in sender window or receiver window
     else
@@ -797,6 +809,10 @@ void sendWithFlowControl(ConnectionList<TCPState>::iterator cxn, MinetHandle mux
     
     recWindow = recWindow - numInflight;
     sndWindow = sndWindow - numInflight;                
+
+    cerr << "\n numInflight: " << numInflight << endl;
+    cerr << "recWindow: " << recWindow << endl;
+    cerr << "sndWindow: " << sndWindow << endl;
     
     //set a timer that times out
     cxn->bTmrActive = true;
@@ -809,7 +825,7 @@ void sendWithFlowControl(ConnectionList<TCPState>::iterator cxn, MinetHandle mux
 //helper function to make packet and send it using Minet
 void SendPacket(MinetHandle handle, Buffer data, Connection conn, unsigned int seq_n, unsigned int ack_n, size_t win_size, unsigned char flag)
 {
-  Packet pack = MakePacket(data, conn, seq_n, ack_n, win_size, flag); 
+  Packet pack = MakePacket(data, conn, seq_n, ack_n, win_size, flag); // ack
   MinetSend(handle, pack);
 }
 
