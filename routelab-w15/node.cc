@@ -188,6 +188,7 @@ void Djistras(const Node* root){
   preds_vec[srcIndex] = index;
   costs_vec[srcIndex] = 0;
   root -> SetVisited(true);
+  root->SetLatency(0.0);
 
   Topology dTopology;
 
