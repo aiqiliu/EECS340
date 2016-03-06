@@ -110,8 +110,8 @@ ostream & Node::Print(ostream &os) const
 
 #if defined(LINKSTATE)
 
-int static number_of_nodes;
-deque<int> static list_of_node_nums; 
+int static Node::number_of_nodes; //might need to create helper functions to get these values since they are private
+deque<int> static Node::list_of_node_nums; 
 
 // function to get all nodes
 void Node::GetAllNodes()
