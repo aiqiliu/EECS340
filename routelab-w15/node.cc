@@ -110,6 +110,44 @@ ostream & Node::Print(ostream &os) const
 
 #if defined(LINKSTATE)
 
+int static number_of_nodes;
+deque<int> static list_of_node_nums; 
+
+// function to get all nodes
+void Node::GetAllNodes()
+{
+  cerr << "Getting all nodes in the network" << endl;
+  deque<Node*> unvisited_nodes = GetNeighbors(this);
+  deque<Node*> visited_nodes;
+  list_of_node_nums.push_back(this->GetNumber()); //add this node's number to list_of_node_nums
+  number_of_nodes++; //adds one to the number_of_nodes
+  while (!unvisited_nodes.empty()) //while unvisited nodes are empty
+  {
+    for(deque<Node*>::iterator curr_unvisited=unvisited_nodes.begin(); curr_unvisited!=unvisited_nodes.end(); curr_unvisited++) //loop through unvisited nodes
+    {
+      if(std::find(list_of_node_nums.begin(), list_of_node_nums.end(), curr_unvisited->GetNumber()) == list_of_node_nums.end()) //if current unvisited node's number is not in list_of_nodes_nums
+      {
+        list_of_node_nums.push_back(curr_unvisited->GetNumber()); //add current unvisited neighbor's number to list_of_node_nums
+        number_of_nodes++; //increment number_of_nodes counter by one
+      }
+      deque<Node*> curr_neighbors = GetNeighbors(curr_unvisited); //get neighbors of current node
+      for(deque<Node*>::iterator neighbor=curr_neighbors.begin(); neighbor!=curr_neighbors.end(); neighbor++) //loop through neighbors of current neighbor
+      {
+        if(std::find(unvisited_nodes.begin(), unvisited_nodes.end(), neighbor) == unvisited_nodes.end()) //if neighbor is not in unvisited_nodes 
+        {
+          if(std::find(visited_nodes.begin(), visited_nodes.end(), neighbor) == visited_nodes.end()) //if neighbor is not in visited_nodes
+          {
+            unvisited_nodes.push_back(neighbor); //add neighbor to unvisited_nodes
+          }
+        }
+      }
+      visited_nodes.push_back(curr_unvisited); //add current unvisited node to visited nodes
+      unvisited_nodes.erase(curr_unvisited); //erase current unvisited node from unvisited nodes
+    }
+  }
+  cerr << number_of_nodes << " nodes found in the network." << endl;
+}
+
 
 void Node::LinkHasBeenUpdated(const Link *l)
 {
@@ -150,37 +188,6 @@ ostream & Node::Print(ostream &os) const
 
 #if defined(DISTANCEVECTOR)
 
-int static number_of_nodes;
-deque<int> static list_of_node_nums; 
-
-// function to get all nodes
-void Node::GetAllNodes()
-{
-  cerr << "Getting all nodes in the network" << endl;
-  deque<Node*> unvisited_neighbors = GetNeighbors(*this);
-  list_of_nodes.push_back(*this.GetNumber()); //add this node's number to list_of_node_nums
-  number_of_nodes++; //adds one to the number_of_nodes
-  while (!unvisited_neighbors.empty()) 
-  {
-    for(deque<Node*>::iterator curr=unvisited_neighbors.begin(); curr!=unvisited_neighbors.end(); curr++) //loop through unvisited neighbors
-    {
-      if(std::find(list_of_nodes.begin(), list_of_nodes.end(), curr) == list_of_nodes.end()) //if curr unvisited neighbor is not in list_of_nodes
-      {
-        list_of_nodes.push_back(curr.GetNumber()); //add current unvisited neighbor's number to list_of_nodes
-        number_of_nodes++; //increment number_of_nodes counter by one
-      }
-      deque<Node*> curr_neighbors = GetNeighbors(curr); //get neighbors of current neighbor
-      for(deque<Node*>::iterator neighbor=curr_neighbors.begin(); neighbor!=curr_neighbors.end(); neighbor++) //loop through neighbors of current neighbor
-      {
-        if(std::find(unvisited_neighbors.begin(), unvisited_neighbors.end(), neighbor) == unvisited_neighbors.end()) //if neighbor is not in unvisited_neighbors 
-        {
-          unvisited_neighbors.push_back(neighbor); //add neighbor to unvisited_neighbors
-        }
-      }
-    }
-  }
-  cerr << number_of_nodes << " nodes found in the network." << endl;
-}
 
 void Node::LinkHasBeenUpdated(const Link *l)
 {
