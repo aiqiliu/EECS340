@@ -151,35 +151,35 @@ ostream & Node::Print(ostream &os) const
 #if defined(DISTANCEVECTOR)
 
 int static number_of_nodes;
-deque<Node*> static list_of_nodes; //want this to be a vector
+deque<int> static list_of_node_nums; 
 
 // function to get all nodes
 void Node::GetAllNodes()
 {
   cerr << "Getting all nodes in the network" << endl;
   deque<Node*> unvisited_neighbors = GetNeighbors(*this);
-  unsigned node_num = curr_node.GetNumber();
+  list_of_nodes.push_back(*this.GetNumber()); //add this node's number to list_of_node_nums
+  number_of_nodes++; //adds one to the number_of_nodes
   while (!unvisited_neighbors.empty()) 
   {
-    for(deque<Node*>::iterator curr=unvisited_neighbors.begin(); curr!=unvisited_neighbors.end(); curr++)
+    for(deque<Node*>::iterator curr=unvisited_neighbors.begin(); curr!=unvisited_neighbors.end(); curr++) //loop through unvisited neighbors
     {
-      if(std::find(list_of_nodes.begin(), list_of_nodes.end(), curr) == list_of_nodes.end()) //if current node is not in list_of_nodes
+      if(std::find(list_of_nodes.begin(), list_of_nodes.end(), curr) == list_of_nodes.end()) //if curr unvisited neighbor is not in list_of_nodes
       {
-        list_of_nodes.push_back(curr); //add current node to list_of_nodes
+        list_of_nodes.push_back(curr.GetNumber()); //add current unvisited neighbor's number to list_of_nodes
         number_of_nodes++; //increment number_of_nodes counter by one
       }
-      deque<Node*> curr_neighbors = GetNeighbors(curr); //get neighbors of current node
-      for(deque<Node*>::iterator neighbor=curr_neighbors.begin(); neighbor!=curr_neighbors.end(); neighbor++) //loop through neighbors of current node
+      deque<Node*> curr_neighbors = GetNeighbors(curr); //get neighbors of current neighbor
+      for(deque<Node*>::iterator neighbor=curr_neighbors.begin(); neighbor!=curr_neighbors.end(); neighbor++) //loop through neighbors of current neighbor
       {
         if(std::find(unvisited_neighbors.begin(), unvisited_neighbors.end(), neighbor) == unvisited_neighbors.end()) //if neighbor is not in unvisited_neighbors 
         {
           unvisited_neighbors.push_back(neighbor); //add neighbor to unvisited_neighbors
         }
       }
-
     }
   }
-  
+  cerr << number_of_nodes << " nodes found in the network." << endl;
 }
 
 void Node::LinkHasBeenUpdated(const Link *l)
