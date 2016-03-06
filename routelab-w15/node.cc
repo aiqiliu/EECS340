@@ -178,11 +178,68 @@ Table *Node::GetRoutingTable() const
 }
 
 
+void Djistras(const Node* root){
+  
+  int srcIndex = root.GetNumber();
+  int destIndex, linkCost, nodeLatency;
+  vector<int> preds_vec = dRoute.getPreds();
+  vector<int> costs_vec = dRoute.getCosts();
+  // initializing the values for the root to be 0 
+  preds_vec[srcIndex] = index;
+  costs_vec[srcIndex] = 0;
+  root -> SetVisited(true);
+
+  Topology dTopology;
+
+  deque<Node*> myneighbors = dTopology.GetNeighbors(root)
+  deque<Link*> outLinks = dTopology.GetOutgoingLinks(root);
+  //Link* currLink = outLinks.front();
+  for(deque<Link*>::iterator currLink = outLinks.begin(); currLink!= outLinks.end(); currLink++){
+
+    destIndex = (*currLink) -> GetDest();
+    linkCost = (*currLink) -> GetLatency();
+
+    nodeLatency = root -> GetLatency();
+    newCost = nodeLatency + linkCost;
+
+     // for this link I need its destn which would give me the the node which would give me its number (i.e index) amd its 
+    // latency which would be used to modify the costs vector
+    // once we get the number that would be the index to modify both the arrays and the pred array will get srcIndex
+    
+    // if(costs_vec[destIndex] == 100000000){
+    //   preds_vec[destIndex] = srcIndex;
+    //   costs_vec[destIndex] = newCost;
+    // }
+
+    // else 
+    if(newCost < costs_vec[destIndex]){
+      preds_vec[destIndex] = srcIndex;
+      costs_vec[destIndex] = newCost;
+    }
+
+  }
+  // Now we need to find the min value in this deque
+  int min_value = 10000000000000;
+  int min_index = 0;
+  
+  for(int i = 0; i< costs_vec.size(); i++){
+    // if(any of my neighbors are unvisited then)
+    if(costs_vec[i] < min_value){
+      min_value = costs_vec[i];
+      min_index = i;
+    }
+  }
+
+
+
+}
+
 ostream & Node::Print(ostream &os) const
 {
   os << "Node(number="<<number<<", lat="<<lat<<", bw="<<bw<<")";
   return os;
 }
+
 #endif
 
 

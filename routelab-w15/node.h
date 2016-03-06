@@ -21,8 +21,13 @@ class Node {
   SimulationContext    *context;
   double   bw;
   double   lat;
-
+  bool     visited;
 #if defined(LINKSTATE)
+   //static variables
+  int static number_of_nodes;
+  deque<int> static list_of_node_nums; 
+
+  void Node::GetAllNodes();
 #endif
 
 #if defined(DISTANCEVECTOR)
