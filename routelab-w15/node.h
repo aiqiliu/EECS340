@@ -23,11 +23,6 @@ class Node {
   double   lat;
 
 #if defined(LINKSTATE)
-  //static variables
-  int static number_of_nodes;
-  deque<int> static list_of_node_nums; 
-
-  void Node::GetAllNodes();
 #endif
 
 #if defined(DISTANCEVECTOR)
@@ -68,6 +63,13 @@ class Node {
 
   virtual ostream & Print(ostream &os) const;
 
+#if defined(LINKSTATE)
+  //static variables
+  int static number_of_nodes;
+  deque<int> static list_of_node_nums; 
+
+  void Node::GetAllNodes();
+#endif
 };
 
 inline ostream & operator<<(ostream &os, const Node &n) { return n.Print(os);}
