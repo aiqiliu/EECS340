@@ -121,6 +121,7 @@ void Node::GetAllNodes()
   deque<Node*> visited_nodes;
   list_of_node_nums.push_back(this->GetNumber()); //add this node's number to list_of_node_nums
   number_of_nodes++; //adds one to the number_of_nodes
+  visited_nodes.push_back(this);
   while (!unvisited_nodes.empty()) //while unvisited nodes are empty
   {
     for(deque<Node*>::iterator curr_unvisited=unvisited_nodes.begin(); curr_unvisited!=unvisited_nodes.end(); curr_unvisited++) //loop through unvisited nodes
