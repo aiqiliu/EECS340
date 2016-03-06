@@ -117,7 +117,7 @@ deque<int> static Node::list_of_node_nums;
 void Node::GetAllNodes()
 {
   cerr << "Getting all nodes in the network" << endl;
-  deque<Node*> unvisited_nodes = GetNeighbors(this);
+  deque<Node*> unvisited_nodes = GetNeighbors();
   deque<Node*> visited_nodes;
   list_of_node_nums.push_back(this->GetNumber()); //add this node's number to list_of_node_nums
   number_of_nodes++; //adds one to the number_of_nodes
@@ -130,19 +130,19 @@ void Node::GetAllNodes()
         list_of_node_nums.push_back(curr_unvisited->GetNumber()); //add current unvisited neighbor's number to list_of_node_nums
         number_of_nodes++; //increment number_of_nodes counter by one
       }
-      deque<Node*> curr_neighbors = GetNeighbors(curr_unvisited); //get neighbors of current node
+      deque<Node*> curr_neighbors = curr_unvisited->GetNeighbors(); //get neighbors of current node
       for(deque<Node*>::iterator neighbor=curr_neighbors.begin(); neighbor!=curr_neighbors.end(); neighbor++) //loop through neighbors of current neighbor
       {
         if(std::find(unvisited_nodes.begin(), unvisited_nodes.end(), neighbor) == unvisited_nodes.end()) //if neighbor is not in unvisited_nodes 
         {
           if(std::find(visited_nodes.begin(), visited_nodes.end(), neighbor) == visited_nodes.end()) //if neighbor is not in visited_nodes
           {
-            unvisited_nodes.push_back(neighbor); //add neighbor to unvisited_nodes
+            unvisited_nodes.push_back(&(*neighbor); //add a pointer of neighbor to unvisited_nodes
           }
         }
       }
-      visited_nodes.push_back(curr_unvisited); //add current unvisited node to visited nodes
-      unvisited_nodes.erase(curr_unvisited); //erase current unvisited node from unvisited nodes
+      visited_nodes.push_back(&(*curr_unvisited)); //add current unvisited node to visited nodes
+      unvisited_nodes.erase(&(*curr_unvisited)); //erase current unvisited node from unvisited nodes
     }
   }
   cerr << number_of_nodes << " nodes found in the network." << endl;
