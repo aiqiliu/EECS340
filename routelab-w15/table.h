@@ -17,16 +17,18 @@ class Table {
 
 
 #if defined(LINKSTATE)
+// Djistra's Algorithm
 class Table {
-  // Students should write this class
-  vector<int> preds(number_of_nodes, number_of_nodes +1);
-  vector<int> costs(number_of_nodes, 100000000);
+  // Students should write this class
+ vector<int> preds; 
+ vector<int> costs; 
  public:
-  vector<int> getCosts();
-  vector<int> getPreds();
-  void setCosts(vector<int> updatedCosts);
-  void setPreds(vector<int> updatedPreds);
-  ostream & Print(ostream &os) const;
+ vector<int> getCosts();
+ vector<int> getPreds();
+ void setCosts(vector<int> updatedCosts);
+ void setPreds(vector<int> updatedPreds);
+  Table ();
+  ostream & Print(ostream &os) const;
 };
 #endif
 

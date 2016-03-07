@@ -1,7 +1,7 @@
 #include "node.h"
 #include "context.h"
 #include "error.h"
-
+#include "table.h"
 #include <deque>
 
 
@@ -90,7 +90,7 @@ void Node::TimeOut()
 }
 
 Node *Node::GetNextHop(const Node *destination) const
-{
+{//consult the table.get the 
   return 0;
 }
 
@@ -109,7 +109,7 @@ ostream & Node::Print(ostream &os) const
 #endif
 
 #if defined(LINKSTATE)
-
+Table dRoute;
 int static Node::number_of_nodes; //might need to create helper functions to get these values since they are private
 deque<int> static Node::list_of_node_nums; 
 
@@ -175,18 +175,21 @@ Node *Node::GetNextHop(const Node *destination) const
 Table *Node::GetRoutingTable() const
 {
   // WRITE
-  return 0;
+  Table routingTable = dRoute;
+  return routingTable;
 }
 
 
 void Djistras(const Node* root){
-  
-  int srcIndex = root.GetNumber();
-  int destIndex, linkCost, nodeLatency;
+  unsigned int neighbor_num;
+  unsigned int srcIndex = root.GetNumber();
+  unsigned int destIndex;
+  double linkCost, nodeLatency;
+
   vector<int> preds_vec = dRoute.getPreds();
   vector<int> costs_vec = dRoute.getCosts();
   // initializing the values for the root to be 0 
-  preds_vec[srcIndex] = index;
+  preds_vec[srcIndex] = srcIndex;
   costs_vec[srcIndex] = 0;
   root -> SetVisited(true);
   root->SetLatency(0.0);
@@ -217,6 +220,7 @@ void Djistras(const Node* root){
     if(newCost < costs_vec[destIndex]){
       preds_vec[destIndex] = srcIndex;
       costs_vec[destIndex] = newCost;
+      
     }
 
   }
