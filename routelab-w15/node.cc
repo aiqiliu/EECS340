@@ -1,7 +1,7 @@
 #include "node.h"
 #include "context.h"
 #include "error.h"
-
+#include "table.h"
 #include <deque>
 
 
@@ -90,7 +90,7 @@ void Node::TimeOut()
 }
 
 Node *Node::GetNextHop(const Node *destination) const
-{
+{//consult the table.get the 
   return 0;
 }
 
@@ -109,7 +109,7 @@ ostream & Node::Print(ostream &os) const
 #endif
 
 #if defined(LINKSTATE)
-
+Table dRoute;
 int static Node::number_of_nodes; //might need to create helper functions to get these values since they are private
 deque<int> static Node::list_of_node_nums; 
 
@@ -117,10 +117,11 @@ deque<int> static Node::list_of_node_nums;
 void Node::GetAllNodes()
 {
   cerr << "Getting all nodes in the network" << endl;
-  deque<Node*> unvisited_nodes = GetNeighbors(this);
+  deque<Node*> unvisited_nodes = GetNeighbors();
   deque<Node*> visited_nodes;
   list_of_node_nums.push_back(this->GetNumber()); //add this node's number to list_of_node_nums
   number_of_nodes++; //adds one to the number_of_nodes
+  visited_nodes.push_back(this);
   while (!unvisited_nodes.empty()) //while unvisited nodes are empty
   {
     for(deque<Node*>::iterator curr_unvisited=unvisited_nodes.begin(); curr_unvisited!=unvisited_nodes.end(); curr_unvisited++) //loop through unvisited nodes
@@ -130,19 +131,19 @@ void Node::GetAllNodes()
         list_of_node_nums.push_back(curr_unvisited->GetNumber()); //add current unvisited neighbor's number to list_of_node_nums
         number_of_nodes++; //increment number_of_nodes counter by one
       }
-      deque<Node*> curr_neighbors = GetNeighbors(curr_unvisited); //get neighbors of current node
+      deque<Node*> curr_neighbors = curr_unvisited->GetNeighbors(); //get neighbors of current node
       for(deque<Node*>::iterator neighbor=curr_neighbors.begin(); neighbor!=curr_neighbors.end(); neighbor++) //loop through neighbors of current neighbor
       {
         if(std::find(unvisited_nodes.begin(), unvisited_nodes.end(), neighbor) == unvisited_nodes.end()) //if neighbor is not in unvisited_nodes 
         {
           if(std::find(visited_nodes.begin(), visited_nodes.end(), neighbor) == visited_nodes.end()) //if neighbor is not in visited_nodes
           {
-            unvisited_nodes.push_back(neighbor); //add neighbor to unvisited_nodes
+            unvisited_nodes.push_back(&(*neighbor); //add a pointer of neighbor to unvisited_nodes
           }
         }
       }
-      visited_nodes.push_back(curr_unvisited); //add current unvisited node to visited nodes
-      unvisited_nodes.erase(curr_unvisited); //erase current unvisited node from unvisited nodes
+      visited_nodes.push_back(&(*curr_unvisited)); //add current unvisited node to visited nodes
+      unvisited_nodes.erase(&(*curr_unvisited)); //erase current unvisited node from unvisited nodes
     }
   }
   cerr << number_of_nodes << " nodes found in the network." << endl;
@@ -174,18 +175,21 @@ Node *Node::GetNextHop(const Node *destination) const
 Table *Node::GetRoutingTable() const
 {
   // WRITE
-  return 0;
+  Table routingTable = dRoute;
+  return routingTable;
 }
 
 
 void Djistras(const Node* root){
-  
-  int srcIndex = root.GetNumber();
-  int destIndex, linkCost, nodeLatency;
+  unsigned int neighbor_num;
+  unsigned int srcIndex = root.GetNumber();
+  unsigned int destIndex;
+  double linkCost, nodeLatency;
+
   vector<int> preds_vec = dRoute.getPreds();
   vector<int> costs_vec = dRoute.getCosts();
   // initializing the values for the root to be 0 
-  preds_vec[srcIndex] = index;
+  preds_vec[srcIndex] = srcIndex;
   costs_vec[srcIndex] = 0;
   root -> SetVisited(true);
   root->SetLatency(0.0);
@@ -216,6 +220,7 @@ void Djistras(const Node* root){
     if(newCost < costs_vec[destIndex]){
       preds_vec[destIndex] = srcIndex;
       costs_vec[destIndex] = newCost;
+      
     }
 
   }
