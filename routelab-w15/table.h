@@ -21,12 +21,15 @@ class Table {
 class Table {
   // Students should write this class
  vector<int> preds; 
- vector<int> costs; 
+ vector<double> costs; 
+ vector<bool> visited;
  public:
- vector<int> getCosts();
+ vector<double> getCosts();
  vector<int> getPreds();
+ vector<bool> getVisited();
  void setCosts(vector<int> updatedCosts);
  void setPreds(vector<int> updatedPreds);
+ void setVisited(vector<bool> updatedVisited);
  Table(unsigned size);
   ostream & Print(ostream &os) const;
 };

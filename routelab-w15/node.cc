@@ -6,7 +6,7 @@
 
 
 Node::Node(const unsigned n, SimulationContext *c, double b, double l) : 
-    number(n), context(c), bw(b), lat(l); 
+    number(n), context(c), bw(b), lat(l)
 {}
 
 Node::Node() 
@@ -178,13 +178,26 @@ void Node::TimeOut()
 }
 
 Node *Node::GetNextHop(const Node *destination) const
-{//1. run the Dijstra's function to construct table
- //2. find the destination node in the table, find it's predecessor
-  //while the predecessor is not the curr node, keep tracing back
-  //use to vars: curr and prev. while prev != this, curr = prev, prev = prev.prev. return curr.
-  // WRITE
-  
-  return 0;
+{
+   // Calling Djistras to initialize the table 
+   this->Djistras();
+   // Using the initally initialised table to find the next hop
+   const unsigned dest_index = destination -> GetNumber();
+   vector<int> pVec = mytable.getPreds();
+   int current_pred = pVec[dest_index];
+   Node* nextone;
+
+   while(current_pred != number){
+    current_pred = pVec[dest_index];    
+    dest_index = current_pred; 
+   }
+   
+   for(deque<Node*>::iterator point = list_of_nodes.begin(); point!=list_of_nodes.end();++point){
+      if(dest_index == (*point)->GetNumber()){
+        nextone = *point;
+      }
+   }
+   return nextone;
 }
 
 Table *Node::GetRoutingTable() const
@@ -204,22 +217,26 @@ void Node::Djistras(){
   // Creating an instance of class table to be able to get the predecessors and costs vectors
   Table nodetable(number_of_nodes);
   vector<int> preds_vec = nodetable.getPreds();
-  vector<int> costs_vec = nodetable.getCosts();
+  vector<double> costs_vec = nodetable.getCosts();
+  vector<bool> visited_vec = nodetable.getVisited();
   
   mytable.setCosts(costs_vec);
   mytable.setPreds(preds_vec);
+  mytable.setVisited(visited_vec);
   preds_vec = mytable.getPreds();
   costs_vec = mytable.getCosts();
+  visited_vec = mytable.getVisited();
   
   // initializing the values for the root to be 0 
   preds_vec[srcIndex] = srcIndex;
-  costs_vec[srcIndex] = 0;
+  costs_vec[srcIndex] = 0.0;
+  visited_vec[srcIndex] = true;
  // for(int i=0; i<number_of_nodes;i++)
-    modifyTable(this, preds_vec, costs_vec);
+    modifyTable(this, preds_vec, costs_vec, visited_vec);
   
 }
 
-void Node::modifyTable(Node* root, vector<int> preds_vec, vector<int> costs_vec){
+void Node::modifyTable(Node* root, vector<int> preds_vec, vector<double> costs_vec, vector<bool> visited_vec){
     // START OF HELPER 
   unsigned destIndex;
   double linkCost, nodeLatency;
@@ -227,6 +244,7 @@ void Node::modifyTable(Node* root, vector<int> preds_vec, vector<int> costs_vec)
   double newCost;
   const double fixCost;
   unsigned srcIndex = this -> GetNumber();
+  const Node* nextNode;
   this -> SetVisited(true);
   
   // Creating an instance of class topology to be able to get the neighbors and outgoing links for the current node
@@ -235,53 +253,54 @@ void Node::modifyTable(Node* root, vector<int> preds_vec, vector<int> costs_vec)
   deque<Link*> outLinks = dTopology.GetOutgoingLinks(root);
   
   for(deque<Link*>::iterator currLink = outLinks.begin(); currLink!= outLinks.end(); ++currLink){
-    if(the link has a dest that has been not been visited){
     destIndex = (*currLink) -> GetDest();
-    linkCost = (*currLink) -> GetLatency();
-    //basically just root latency
-    nodeLatency = root -> GetLatency();
-    newCost = nodeLatency + linkCost;
+    if(vec_visited[destIndex] == false){
+    
+        linkCost = (*currLink) -> GetLatency();
+        //basically just root latency
+        nodeLatency = root -> GetLatency();
+        newCost = nodeLatency + linkCost;
 
- // If the new cost to the destination node from the root is less than the currentcost then we replace it
-    if(newCost < costs_vec[destIndex]){
-      preds_vec[destIndex] = srcIndex;
-      costs_vec[destIndex] = newCost;
-      // set latency ito be modified  
+         // replace if the new cost is less than the currentcost 
+        if(newCost < costs_vec[destIndex]){
+            preds_vec[destIndex] = srcIndex;
+            costs_vec[destIndex] = newCost;
+            // set latency ito be modified  
+        }
     }
-   }
   }
 
   // Now we need to find the min value in this deque to get the next node to be set
   int min_value = 10000000000000;
   int min_index = 0;
   
-  for(int i = 0; i< costs_vec.size(); i++){
-    // if(any of my neighbors are unvisited then)
-    if(costs_vec[i] < min_value){
-        if()
-      min_value = costs_vec[i];
-      min_index = i;
-    }
-  }
+  for(int i = 0; i< costs_vec.size(); i++){//loop to find the next node to be fixed
+    if(visited_vec[i] == false) { //skip the ones that were previously fixed
+        if(costs_vec[i] < min_value){
+          min_value = costs_vec[i];
+          min_index = i;
+        }
+      }
+    }
 
   double myneighbor_cost;
   // MARKING THE least cost neighbor AS VISITED: 
   for(deque<Node*>::iterator j = myneighbors.begin(); j!=myneighbors.end(); ++j){
-  //for (auto it = myvector.cbegin(); it != myvector.cend(); ++it{
+    //find the node to be fixed next
     myneighbor_number = (*j)->GetNumber();
-    myneighbor_visited = (*j) -> GetVisited();
     myneighbor_cost = *j -> GetLatency();
-    if(myneighbor_number == min_index && myneighbor_visited == false){
-      (*j) -> SetVisited(true);
-      SetLatency(min(newCost ,myneighbor_cost));
+
+    if(myneighbor_number == min_index){//the min node is found
+      visited_vec[myneighbor_number] = true;         //set visited value be true
+      (*j)->SetLatency(costs_vec[myneighbor_number]);//set latency for this node
+      nextNode = *j;
       break;
     }
   }
 
-  const Node* nextNode = *j;
-  modifyTable(nextNode);
+  modifyTable(nextNode, preds_vec, costs_vec, visited_vec); //run recursion
 }
-}
+
 ostream & Node::Print(ostream &os) const
 {
   os << "Node(number="<<number<<", lat="<<lat<<", bw="<<bw<<")";
