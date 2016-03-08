@@ -1,5 +1,7 @@
 #include "table.h"
 
+using namespace std;
+
 #if defined(GENERIC)
 ostream & Table::Print(ostream &os) const
 {
@@ -12,22 +14,29 @@ ostream & Table::Print(ostream &os) const
 #if defined(LINKSTATE)
 Table::Table(unsigned size){
 preds.assign(size+1, size +1);
-costs.assign(size+1, 100000000);
+costs.assign(size+1, 100000000.0);
+visited.assign(size+1, false);
 }
-vector<int> Table::getCosts(){
+vector<double> Table::getCosts(){
     return costs;
 }
 
 vector<int> Table::getPreds(){
     return preds;
 }
+vector<int> Table::Visited(){
+    return visited;
+}
 
-void Table::setCosts(vector<int> updatedCosts){
+void Table::setCosts(vector<double> updatedCosts){
     costs = updatedCosts;
 }
 
 void Table::setPreds(vector<int> updatedPreds){
     preds = updatedPreds;
+}
+void Table::setVisited(vector<bool> updatedPreds){
+    preds = updatedPredsVisited;
 }
 
 ostream & Table::Print(ostream &os) const

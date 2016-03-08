@@ -4,6 +4,7 @@
 #include "table.h"
 #include <deque>
 
+using namespace std;
 
 Node::Node(const unsigned n, SimulationContext *c, double b, double l) : 
     number(n), context(c), bw(b), lat(l)
@@ -129,7 +130,7 @@ void Node::GetAllNodes()
   {
     for(deque<Node*>::iterator curr_unvisited=unvisited_nodes.begin(); curr_unvisited!=unvisited_nodes.end(); curr_unvisited++) //loop through unvisited nodes
     {
-      if(std::find(list_of_node_nums.begin(), list_of_node_nums.end(), curr_unvisited->GetNumber()) == list_of_node_nums.end()) //if current unvisited node's number is not in list_of_nodes_nums
+      if(find(list_of_node_nums.begin(), list_of_node_nums.end(), curr_unvisited->GetNumber()) == list_of_node_nums.end()) //if current unvisited node's number is not in list_of_nodes_nums
       {
         list_of_node_nums.push_back((*curr_unvisited)->GetNumber()); //add current unvisited neighbor's number to list_of_node_nums
         list_of_nodes.push_back(*curr_unvisited); //adds current univsited neighbor to list of nodes
@@ -138,9 +139,9 @@ void Node::GetAllNodes()
       deque<Node*> curr_neighbors = (*curr_unvisited)->GetNeighbors(); //get neighbors of current node
       for(deque<Node*>::iterator neighbor=curr_neighbors.begin(); neighbor!=curr_neighbors.end(); neighbor++) //loop through neighbors of current neighbor
       {
-        if(std::find(unvisited_nodes.begin(), unvisited_nodes.end(), neighbor) == unvisited_nodes.end()) //if neighbor is not in unvisited_nodes 
+        if(find(unvisited_nodes.begin(), unvisited_nodes.end(), neighbor) == unvisited_nodes.end()) //if neighbor is not in unvisited_nodes 
         {
-          if(std::find(visited_nodes.begin(), visited_nodes.end(), neighbor) == visited_nodes.end()) //if neighbor is not in visited_nodes
+          if(find(visited_nodes.begin(), visited_nodes.end(), neighbor) == visited_nodes.end()) //if neighbor is not in visited_nodes
           {
             unvisited_nodes.push_back(*neighbor); //add a pointer of neighbor to unvisited_nodes
           }
@@ -188,7 +189,7 @@ Node *Node::GetNextHop(const Node *destination) const
    Node* nextone;
 
    while(current_pred != number){
-    current_pred = pVec[dest_index];    
+    current_pred = pVec[dest_index];    //change pred
     dest_index = current_pred; 
    }
    

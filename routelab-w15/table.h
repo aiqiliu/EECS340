@@ -19,7 +19,6 @@ class Table {
 #if defined(LINKSTATE)
 // Djistra's Algorithm
 class Table {
-  // Students should write this class
  vector<int> preds; 
  vector<double> costs; 
  vector<bool> visited;
@@ -30,8 +29,8 @@ class Table {
  void setCosts(vector<int> updatedCosts);
  void setPreds(vector<int> updatedPreds);
  void setVisited(vector<bool> updatedVisited);
- Table(unsigned size);
-  ostream & Print(ostream &os) const;
+ Table(const unsigned size);
+ ostream & Print(ostream &os) const;
 };
 #endif
 

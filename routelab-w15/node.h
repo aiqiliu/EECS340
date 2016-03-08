@@ -66,7 +66,7 @@ class Node {
   int number_of_nodes;
   deque<int> list_of_node_nums; 
   deque<Node*> list_of_nodes;
-  Table mytable(0);
+  Table mytable;
 
   void GetAllNodes();
   void Djistras();
