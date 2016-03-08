@@ -274,35 +274,35 @@ void Node::modifyTable(Node* root, vector<int> preds_vec, vector<double> costs_v
     }
   }
 
-  // Now we need to find the min value in this deque to get the next node to be set
-  int min_value = 10000000000000;
-  int min_index = 0;
-  
-  for(int i = 0; i< costs_vec.size(); i++){//loop to find the next node to be fixed
-    if(visited_vec[i] == false) { //skip the ones that were previously fixed
-        if(costs_vec[i] < min_value){
-          min_value = costs_vec[i];
-          min_index = i;
-        }
-      }
+  //Now we need to find the min value in this deque to get the next node to be set
+  int min_value = 10000000000000;
+  int min_index = 0;
+
+  for (int i = 0; i < costs_vec.size(); i++) { //loop to find the next node to be fixed
+    if (visited_vec[i] == false) { //skip the ones that were previously fixed
+      if (costs_vec[i] < min_value) {
+        min_value = costs_vec[i];
+        min_index = i;
+      }
     }
+  }
 
-  double myneighbor_cost;
-  // MARKING THE least cost neighbor AS VISITED: 
-  for(deque<Node*>::iterator j = myneighbors.begin(); j!=myneighbors.end(); ++j){
+  double myneighbor_cost;
+  //MARKING the least cost neighbor as VISITED:
+  for (deque<Node*>::iterator j = myneighbors.begin(); j != myneighbors.end(); ++j){
     //find the node to be fixed next
-    myneighbor_number = (*j)->GetNumber();
-    myneighbor_cost = *j -> GetLatency();
+    myneighbor_number = (*j)->GetNumber();
+    myneighbor_cost = (*j)->GetLatency();
 
-    if(myneighbor_number == min_index){//the min node is found
-      visited_vec[myneighbor_number] = true;         //set visited value be true
-      (*j)->SetLatency(costs_vec[myneighbor_number]);//set latency for this node
+    if(myneighbor_number == min_index) { //the min node is found
+      visited_vec[myneighbor_number] = true; //set visited value to be true
+      (*j)->SetLatency(costs_vec[myneighbor_number]); //set latency for this node
       nextNode = *j;
-      break;
-    }
-  }
+      break;
+    }
+  }
 
-  modifyTable(nextNode, preds_vec, costs_vec, visited_vec); //run recursion
+  modifyTable(nextNode, preds_vec, costs_vec, visited_vec); //run recursion
 }
 
 ostream & Node::Print(ostream &os) const
