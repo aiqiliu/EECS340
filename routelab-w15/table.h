@@ -28,10 +28,11 @@ class Table {
  vector<double> getCosts();
  vector<unsigned> getPreds();
  vector<bool> getVisited();
- void setCosts(vector<int> updatedCosts);
+ void setCosts(vector<double> updatedCosts);
  void setPreds(vector<unsigned> updatedPreds);
  void setVisited(vector<bool> updatedVisited);
  Table(const unsigned size);
+ Table(){};
  ostream & Print(ostream &os) const;
 };
 #endif

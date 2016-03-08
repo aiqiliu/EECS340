@@ -164,7 +164,7 @@ void Node::LinkHasBeenUpdated(const Link *l)
   GetAllNodes();
   for(deque<Node*>::iterator node=list_of_nodes.begin(); node!=list_of_nodes.end(); node++)
   {
-      node->Djistras(); //call Djistras for each node in the network because it is possible the shortest path changed for every node
+      (*node)->Djistras(); //call Djistras for each node in the network because it is possible the shortest path changed for every node
   }
 }
 
@@ -180,12 +180,12 @@ void Node::TimeOut()
   cerr << *this << " got a timeout: ignored"<<endl;
 }
 
-Node *Node::GetNextHop(const Node *destination) const
+Node *Node::GetNextHop(const Node *destination)
 {
    // Calling Djistras to initialize the table 
    Djistras();
    // Using the initally initialised table to find the next hop
-   const unsigned dest_index = destination -> GetNumber();
+  unsigned dest_index = destination -> GetNumber();
    vector<unsigned> pVec = mytable.getPreds();
    unsigned current_pred = pVec[dest_index];
    Node* nextone;
@@ -203,7 +203,7 @@ Node *Node::GetNextHop(const Node *destination) const
    return nextone;
 }
 
-Table *Node::GetRoutingTable() const
+Table *Node::GetRoutingTable()
 {
   // WRITE
 
@@ -213,17 +213,16 @@ Table *Node::GetRoutingTable() const
 void Node::Djistras(){
   
  
-  unsigned srcIndex = this -> GetNumber();
+  unsigned srcIndex = GetNumber();
 
   bool  myneighbor_visited;
   GetAllNodes();
   // Creating an instance of class table to be able to get the predecessors and costs vectors
-  Table nodetable = new Table(number_of_nodes); 
-  vector<int> preds_vec = nodetable.getPreds();
-  vector<double> costs_vec = nodetable.getCosts();
-  vector<bool> visited_vec = nodetable.getVisited();
+  Table* nodetable = new Table(number_of_nodes); 
+  vector<unsigned> preds_vec = nodetable->getPreds();
+  vector<double> costs_vec = nodetable->getCosts();
+  vector<bool> visited_vec = nodetable->getVisited();
   
-  mytable = new Table(0); //might need to delete (garbage collection)
   mytable.setCosts(costs_vec);
   mytable.setPreds(preds_vec);
   mytable.setVisited(visited_vec);
@@ -240,7 +239,7 @@ void Node::Djistras(){
   delete nodetable;
 }
 
-void Node::modifyTable(Node* root, vector<int> preds_vec, vector<double> costs_vec, vector<bool> visited_vec){
+void Node::modifyTable(Node* root, vector<unsigned> preds_vec, vector<double> costs_vec, vector<bool> visited_vec){
     // START OF HELPER 
   unsigned destIndex;
   double linkCost, nodeLatency;
