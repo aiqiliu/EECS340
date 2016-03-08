@@ -27,7 +27,7 @@ class Table {
  vector<int> getPreds();
  void setCosts(vector<int> updatedCosts);
  void setPreds(vector<int> updatedPreds);
-  Table ();
+ Table(unsigned size);
   ostream & Print(ostream &os) const;
 };
 #endif

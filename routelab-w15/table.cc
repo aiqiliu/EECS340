@@ -10,9 +10,9 @@ ostream & Table::Print(ostream &os) const
 #endif
 
 #if defined(LINKSTATE)
-Table::Table(){
-preds.assign(number_of_nodes+1, number_of_nodes +1);
-costs.assign(number_of_nodes+1, 100000000);
+Table::Table(unsigned size){
+preds.assign(size+1, size +1);
+costs.assign(size+1, 100000000);
 }
 vector<int> Table::getCosts(){
     return costs;

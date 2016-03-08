@@ -22,18 +22,6 @@ class Node {
   double   bw;
   double   lat;
   bool     visited;
-#if defined(LINKSTATE)
-   //static variables
-  int static number_of_nodes;
-  deque<int> static list_of_node_nums; 
-
-  void Node::GetAllNodes();
-#endif
-
-#if defined(DISTANCEVECTOR)
-#endif
-
-  // students will add protocol-specific data here
 
  public:
   Node(const unsigned n, SimulationContext *c, double b, double l);
@@ -68,15 +56,23 @@ class Node {
 
   virtual ostream & Print(ostream &os) const;
 
+#if defined(DISTANCEVECTOR)
+#endif
+
+
 #if defined(LINKSTATE)
   //static variables
-  int static number_of_nodes;
-  deque<int> static list_of_node_nums; 
 
-  void Node::GetAllNodes();
+  int number_of_nodes;
+  deque<int> list_of_node_nums; 
+  deque<Node*> list_of_nodes;
+  Table mytable(0);
+
+  void GetAllNodes();
+  void Djistras();
+
 #endif
 };
-
 inline ostream & operator<<(ostream &os, const Node &n) { return n.Print(os);}
 
 
