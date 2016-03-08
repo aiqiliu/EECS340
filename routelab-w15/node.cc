@@ -113,9 +113,6 @@ ostream & Node::Print(ostream &os) const
 #endif
 
 #if defined(LINKSTATE)
-unsigned Node::number_of_nodes; //might need to create helper functions to get these values since they are private
-deque<unsigned> Node::list_of_node_nums;
-deque<Node*> Node::list_of_nodes 
 
 // function to get all nodes
 void Node::GetAllNodes()
@@ -192,8 +189,8 @@ Node *Node::GetNextHop(const Node *destination) const
    Node* nextone;
 
    while(current_pred != number){
-    current_pred = pVec[dest_index];    //change pred
-    dest_index = current_pred; 
+    dest_index = current_pred;
+    current_pred = pVec[dest_index];    //change pred 
    }
    
    for(deque<Node*>::iterator point = list_of_nodes.begin(); point!=list_of_nodes.end();++point){
@@ -219,11 +216,12 @@ void Node::Djistras(){
   bool  myneighbor_visited;
   GetAllNodes();
   // Creating an instance of class table to be able to get the predecessors and costs vectors
-  Table nodetable(number_of_nodes);
+  Table nodetable = new Table(number_of_nodes); 
   vector<int> preds_vec = nodetable.getPreds();
   vector<double> costs_vec = nodetable.getCosts();
   vector<bool> visited_vec = nodetable.getVisited();
   
+  mytable = new Table(0); //might need to delete (garbage collection)
   mytable.setCosts(costs_vec);
   mytable.setPreds(preds_vec);
   mytable.setVisited(visited_vec);
@@ -236,8 +234,8 @@ void Node::Djistras(){
   costs_vec[srcIndex] = 0.0;
   visited_vec[srcIndex] = true;
  // for(int i=0; i<number_of_nodes;i++)
-    modifyTable(this, preds_vec, costs_vec, visited_vec);
-  
+  modifyTable(this, preds_vec, costs_vec, visited_vec);
+  delete nodetable;
 }
 
 void Node::modifyTable(Node* root, vector<int> preds_vec, vector<double> costs_vec, vector<bool> visited_vec){
