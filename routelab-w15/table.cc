@@ -16,6 +16,7 @@ ostream & Table::Print(ostream &os) const
 #endif
 
 #if defined(LINKSTATE)
+
 Table::Table(unsigned size){
 preds.assign(size+1, size +1);
 costs.assign(size+1, 100000000.0);
@@ -52,6 +53,62 @@ ostream & Table::Print(ostream &os) const
 #endif
 
 #if defined(DISTANCEVECTOR)
+RoutingPath::RoutingPath(unsigned dest, unsigned next, double c) :
+	destination(dest), next_node(next), cost(c)
+{}
 
+ostream & RoutingPath::Print(ostream &os) const
+{
+	os << "RoutingPath(dest=" << destination << ", next=" << next_node << ", cost=" << cost << ")";
+	return os;
+}
+
+deque<RoutingPath> Table::GetRoutingPaths() {
+    return contents;
+}
+
+deque<RoutingPath>::iterator Table::GetDestinationRoutingPath(unsigned dest) {
+    for(deque<RoutingPath>::iterator routing_path = contents.begin(); routing_path != contents.end(); routing_path++){
+      if(routing_path->destination == dest){
+        return routing_path;
+      } 
+    }
+    return contents.end();
+}
+
+RoutingPath* Table::GetRoutingPath(unsigned dest) {
+  deque<RoutingPath>::iterator routing_path = GetDestinationRoutingPath(dest);
+  if (routing_path != contents.end()) 
+  {
+    RoutingPath* res = new RoutingPath(routing_path->destination, routing_path->next_node, routing_path->cost);
+    return res;
+  } 
+  else 
+  {
+    return NULL;
+  }
+}
+
+void Table::EditRoutingPath(unsigned dest, RoutingPath new_routing_path) {
+    deque<RoutingPath>::iterator routing_path = GetDestinationRoutingPath(dest);
+    if (routing_path != contents.end()) {
+      routing_path->destination = new_routing_path.destination;
+      routing_path->next_node = new_routing_path.next_node;
+      routing_path->cost = new_routing_path.cost;
+    }
+    else {
+      contents.push_back(new_routing_path);
+    }
+}
+
+ostream & Table::Print(ostream &os) const
+{
+  os << "Table(routing paths={";
+  for (deque<RoutingPath>::const_iterator routing_path = contents.begin(); routing_path != contents.end(); routing_path++) { 
+    os << *routing_path << ", ";
+  }
+  os << "})";
+  return os;
+}
 
 #endif

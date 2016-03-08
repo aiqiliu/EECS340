@@ -31,6 +31,7 @@ RoutingMessage::RoutingMessage(const RoutingMessage &rhs)
 
 ostream &RoutingMessage::Print(ostream &os) const
 {
+  os << "RoutingMessage(src=" << src << ", dest=" << dest << ", cost=" << cost << ")";
   return os;
 }
 
@@ -38,7 +39,12 @@ RoutingMessage::RoutingMessage()
 {}
 
 
-RoutingMessage::RoutingMessage(const RoutingMessage &rhs)
+RoutingMessage::RoutingMessage(const RoutingMessage &rhs) :
+  src(rhs.src), dest(rhs.dest), cost(rhs.cost)
+{}
+
+RoutingMessage::RoutingMessage(Node s, Node d, double c) :
+  src(s), dest(d), cost(c)
 {}
 
 #endif

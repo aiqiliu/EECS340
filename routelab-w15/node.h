@@ -24,6 +24,9 @@ class Node {
   double   bw;
   double   lat;
   bool     visited;
+#if defined(DISTANCEVECTOR)
+  Table table;
+#endif
 
  public:
   Node(const unsigned n, SimulationContext *c, double b, double l);
@@ -47,6 +50,10 @@ class Node {
   virtual deque<Node*> *GetNeighbors();
   virtual void SetTimeOut(const double timefromnow);
 
+#if defined(DISTANCEVECTOR)
+  void UpdatesFromNeighbors();
+#endif
+
   //
   // Students will WRITE THESE
   //
@@ -57,10 +64,6 @@ class Node {
   virtual Table *GetRoutingTable() const;
 
   virtual ostream & Print(ostream &os) const;
-
-#if defined(DISTANCEVECTOR)
-#endif
-
 
 #if defined(LINKSTATE)
   //static variables

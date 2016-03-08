@@ -26,15 +26,18 @@ struct RoutingMessage {
 
 #if defined(DISTANCEVECTOR)
 struct RoutingMessage {
+  Node src;
+  Node dest;
+  double cost;
 
   RoutingMessage();
   RoutingMessage(const RoutingMessage &rhs);
   RoutingMessage &operator=(const RoutingMessage &rhs);
+  RoutingMessage(Node s, Node d, double c);
 
   ostream & Print(ostream &os) const;
 };
 #endif
-
 
 inline ostream & operator<<(ostream &os, const RoutingMessage &m) { return m.Print(os);}
 

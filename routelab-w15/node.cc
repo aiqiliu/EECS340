@@ -49,11 +49,12 @@ Node::~Node()
 // so that the corresponding node can recieve the ROUTING_MESSAGE_ARRIVAL event at the proper time
 void Node::SendToNeighbors(const RoutingMessage *m)
 {
+  context->SendToNeighbors(this, m);
 }
 
 void Node::SendToNeighbor(const Node *n, const RoutingMessage *m)
 {
-
+  context->SendToNeighbor(this, n, m);
 }
 
 deque<Node*> *Node::GetNeighbors()
@@ -314,39 +315,136 @@ ostream & Node::Print(ostream &os) const
 
 #if defined(DISTANCEVECTOR)
 
-
-void Node::LinkHasBeenUpdated(const Link *l)
+void Node::LinkHasBeenUpdated(const Link *link)
 {
-  // update our table
-  // send out routing mesages
-  cerr << *this<<": Link Update: "<<*l<<endl;
+  cerr << *this << ": Link Update: " << *link << endl;
+
+  unsigned dest = link->GetDest();
+  double new_cost = link->GetLatency();
+  RoutingPath* neighbor = table.GetRoutingPath(dest);
+
+  /*
+    Cases we considered
+      1. No routing_path exists in the table -> should make a new one
+      2. Cost to neighbor is lower than the current cost in table -> update this cost
+      3. Cost in table is for direct path (information is possibly outdated) -> update the cost
+  */
+  if (neighbor == NULL|| 
+    neighbor->cost > new_cost ||
+    neighbor->destination == neighbor->next_node)
+  {
+    //edit the routing path with the new cost
+    table.EditRoutingPath(dest, RoutingPath(dest, dest, new_cost));
+
+    //send routing message to all neighbors with the updated information
+    SendToNeighbors(new RoutingMessage(*this, Node(dest, context, 0, 0), new_cost));
+    UpdatesFromNeighbors();
+  }
 }
 
 
-void Node::ProcessIncomingRoutingMessage(const RoutingMessage *m)
+void Node::ProcessIncomingRoutingMessage(const RoutingMessage *message)
 {
+  cerr << *this << ": Received Message: " << *message << endl;
 
+  //unpack data from routing message
+  Node src = message->src;
+  unsigned src_number = src.GetNumber();
+  Node dest = message->dest;
+  unsigned dest_number = dest.GetNumber();
+  double total_cost = message->cost;
+
+  //unnecessary routing message received
+  if (dest_number == GetNumber()) {
+    return;
+  }
+
+  //check this node's distance to the destination in message
+  RoutingPath* src_routing_path = table.GetRoutingPath(src_number);
+  RoutingPath* dest_routing_path = table.GetRoutingPath(dest_number);
+
+  //compare that with this node's distance to the source in the message + cost in the message
+
+  /* Cases we considered:
+      1. src_routing_path does not exist -> cannot update
+      2. dest_routing_path does not exit -> should update
+      3. cost in the routing table is greater than new cost -> should update
+  */
+  if (src_routing_path == NULL) {
+    return;
+  }
+  else if (dest_routing_path == NULL || 
+    dest_routing_path->cost > src_routing_path->cost + total_cost) 
+  {
+    double new_cost = src_routing_path->cost + total_cost;
+    table.EditRoutingPath(dest_number, RoutingPath(dest_number, src_number, new_cost));
+
+    SendToNeighbors(new RoutingMessage(*this, Node(dest_number, context, 0, 0), new_cost));
+    UpdatesFromNeighbors();
+  }
 }
 
 void Node::TimeOut()
 {
-  cerr << *this << " got a timeout: ignored"<<endl;
+  cerr << *this << " got a timeout: ignored" << endl;
 }
 
 
 Node *Node::GetNextHop(const Node *destination) const
 {
+  cerr << "Next Hop, Table: " << table << endl;
+  unsigned dest_number = destination->GetNumber();
+  RoutingPath* dest_routing_path = GetRoutingTable()->GetRoutingPath(dest_number);
+
+  return new Node(dest_routing_path->next_node, NULL, 0, 0);
 }
 
 Table *Node::GetRoutingTable() const
 {
+  return new Table(table);
+}
 
+void Node::UpdatesFromNeighbors() 
+{
+  deque<RoutingPath> routing_paths = table.GetRoutingPaths();
+  deque<Node*>* neighbors = GetNeighbors();
+
+  for(deque<RoutingPath>::iterator routing_path = routing_paths.begin(); routing_path != routing_paths.end(); routing_path++)
+  {
+    double current_lowest_cost = routing_path->cost;
+    unsigned current_next_node = routing_path->next_node;
+
+    for(deque<Node*>::iterator neighbor = neighbors->begin(); neighbor != neighbors->end(); neighbor++)
+    {
+      RoutingPath* neighbor_routing_path = table.GetRoutingPath((*neighbor)->GetNumber());
+      if (neighbor_routing_path != NULL)
+      {
+        double neighbor_cost = neighbor_routing_path->cost;
+        RoutingPath* neighbor_to_dest = (*neighbor)->GetRoutingTable()->GetRoutingPath(routing_path->destination);
+        if (neighbor_to_dest != NULL)
+        {
+          double this_cost = neighbor_cost + neighbor_to_dest->cost;
+          if (this_cost < current_lowest_cost)
+          {
+            current_lowest_cost = this_cost;
+            current_next_node = (*neighbor)->GetNumber();
+          }
+        }
+      }
+    }
+    //if cost was lowered, we edit the routing path in the table and send to our neighbors
+    if (current_lowest_cost != routing_path->cost)
+    {
+      table.EditRoutingPath(routing_path->destination, RoutingPath(routing_path->destination, current_next_node, current_lowest_cost));
+      SendToNeighbors(new RoutingMessage(*this, Node(routing_path->destination, context, 0, 0), current_lowest_cost));
+    }
+  }
 }
 
 
 ostream & Node::Print(ostream &os) const
 {
-  os << "Node(number="<<number<<", lat="<<lat<<", bw="<<bw;
+  os << "Node(number=" << number << ", lat=" << lat << ", bw=" << bw;
   return os;
 }
 #endif 

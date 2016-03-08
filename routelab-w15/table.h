@@ -40,9 +40,27 @@ class Table {
 
 #include <deque>
 
+// Each RoutingPath is the shortest path to the destination node that's
+// not a direct neighbor.
+struct RoutingPath {
+	unsigned destination; // destination node
+	unsigned next_node; // node to immediately forward to 
+	double cost;
+	ostream & Print(ostream &os) const;
+	RoutingPath(unsigned dest, unsigned next, double c);
+};
+
+inline ostream & operator<<(ostream &os, const RoutingPath &e) { return e.Print(os);}
+
 class Table {
- public:
-  ostream & Print(ostream &os) const;
+private:
+	deque<RoutingPath> contents;
+public:
+	deque<RoutingPath> GetRoutingPaths();
+	deque<RoutingPath>::iterator GetDestinationRoutingPath(unsigned);
+	RoutingPath* GetRoutingPath(unsigned);
+	void EditRoutingPath(unsigned, RoutingPath);
+	ostream & Print(ostream &os) const;
 };
 #endif
 
