@@ -3,6 +3,8 @@
 
 
 #include <iostream>
+#include <string>
+#include <vector>
 
 using namespace std;
 
@@ -29,7 +31,7 @@ class Table {
  void setCosts(vector<int> updatedCosts);
  void setPreds(vector<int> updatedPreds);
  void setVisited(vector<bool> updatedVisited);
- Table(const unsigned size);
+ Table(const unsigned size);
  ostream & Print(ostream &os) const;
 };
 #endif

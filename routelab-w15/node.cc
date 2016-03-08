@@ -3,6 +3,9 @@
 #include "error.h"
 #include "table.h"
 #include <deque>
+#include <string>
+#include <vector>
+#include <iostream>
 
 using namespace std;
 
