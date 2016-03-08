@@ -75,7 +75,7 @@ class Node {
 
   void GetAllNodes();
   void Djistras();
-  void modifyTable(Node* root, vector<unsigned> preds_vec, vector<double> costs_vec, vector>bool> visited_vec);
+  void modifyTable(Node* root, vector<unsigned> preds_vec, vector<double> costs_vec, vector<bool> visited_vec);
 
 #endif
 };
