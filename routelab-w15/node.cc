@@ -181,11 +181,11 @@ void Node::TimeOut()
 Node *Node::GetNextHop(const Node *destination) const
 {
    // Calling Djistras to initialize the table 
-   this->Djistras();
+   Djistras();
    // Using the initally initialised table to find the next hop
    const unsigned dest_index = destination -> GetNumber();
-   vector<int> pVec = mytable.getPreds();
-   int current_pred = pVec[dest_index];
+   vector<unsigned> pVec = mytable.getPreds();
+   unsigned current_pred = pVec[dest_index];
    Node* nextone;
 
    while(current_pred != number){
@@ -205,7 +205,7 @@ Table *Node::GetRoutingTable() const
 {
   // WRITE
 
-  return this->mytable;
+  return &(this->mytable);
 }
 
 void Node::Djistras(){

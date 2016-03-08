@@ -25,7 +25,7 @@ vector<double> Table::getCosts(){
     return costs;
 }
 
-vector<int> Table::getPreds(){
+vector<unsigned> Table::getPreds(){
     return preds;
 }
 vector<int> Table::Visited(){
@@ -36,7 +36,7 @@ void Table::setCosts(vector<double> updatedCosts){
     costs = updatedCosts;
 }
 
-void Table::setPreds(vector<int> updatedPreds){
+void Table::setPreds(vector<unsigned> updatedPreds){
     preds = updatedPreds;
 }
 void Table::setVisited(vector<bool> updatedPreds){

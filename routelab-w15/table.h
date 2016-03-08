@@ -21,15 +21,15 @@ class Table {
 #if defined(LINKSTATE)
 // Djistra's Algorithm
 class Table {
- vector<int> preds; 
+ vector<unsigned> preds; 
  vector<double> costs; 
  vector<bool> visited;
  public:
  vector<double> getCosts();
- vector<int> getPreds();
+ vector<unsigned> getPreds();
  vector<bool> getVisited();
  void setCosts(vector<int> updatedCosts);
- void setPreds(vector<int> updatedPreds);
+ void setPreds(vector<unsigned> updatedPreds);
  void setVisited(vector<bool> updatedVisited);
  Table(const unsigned size);
  ostream & Print(ostream &os) const;
