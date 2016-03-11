@@ -19,8 +19,22 @@ class Table {
 #if defined(LINKSTATE)
 class Table {
   // Students should write this class
+ 	vector<unsigned> preds; 
+ 	vector<double> costs; 
+ 	vector<bool> visited;
+ 	deque<Link*> out_links;
+ 	deque<Node*> all_nodes;
  public:
-  ostream & Print(ostream &os) const;
+ 	vector<double> getCosts() ;
+ 	vector<unsigned> getPreds() ;
+ 	vector<bool> getVisited() ;
+ 	deque<Link*> getOutLinks();
+ 	// void setCosts(vector<double> updatedCosts);
+ 	// void setPreds(vector<unsigned> updatedPreds);
+ 	// void setVisited(vector<bool> updatedVisited);
+ 	// Table(const unsigned size);
+ 	Table(){};
+    ostream & Print(ostream &os) const;
 };
 #endif
 
