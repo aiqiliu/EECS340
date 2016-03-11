@@ -1,6 +1,4 @@
 #include "table.h"
-#include "node.h"
-#include "link.h"
 
 #include <new>
 #include <string>
@@ -27,35 +25,22 @@ Table::Table() {
  	all_nodes(0);
 }
 
-Table::vector<double> Table::getCosts() {
+vector<double> Table::getCosts() {
     return costs;
 }
 
-Table::vector<unsigned> Table::getPreds() {
+vector<unsigned> Table::getPreds() {
     return preds;
 }
-
-Table::vector<bool> Table::getVisited() {
+vector<bool> Table::getVisited() {
     return visited;
 }
 
-Table::deque<Link*> getOutLinks() {
-    return out_links;
+deque<Link*> getOutLinks() {
+	return out_links;
 }
 
-Table::deque<Node*> getAllNodes() {
-    return all_nodes;
-}
-
-Table::void addLink(Link* l) {
-    out_links.push_back(l);
-}
-
-Table::void addNode(Node* n) {
-    all_nodes.push_back(n);
-}
-
-Table::ostream & Table::Print(ostream &os) const
+ostream & Table::Print(ostream &os) const
 {
   for(unsigned i = 1;i<preds.size(); i++)
       os << "Node: "<< i << "Predecessor: " << preds[i] << "Cost: " << costs[i] << endl;

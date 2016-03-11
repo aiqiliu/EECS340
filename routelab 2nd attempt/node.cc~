@@ -2,15 +2,12 @@
 #include "table.h"
 #include "context.h"
 #include "error.h"
-#include "link.h"
 
 #include <new>
 #include <string>
 #include <vector>
 #include <iostream>
 #include <deque>
-
-using namespace std;
 
 Node::Node(const unsigned n, SimulationContext *c, double b, double l) : 
     number(n), context(c), bw(b), lat(l) 
@@ -126,7 +123,6 @@ void Node::LinkHasBeenUpdated(const Link *l)
   unsigned src = l->GetSrc();
   double cost = l->GetLatency();
   bool updated = false;
-  deque<Link*> out_links = mytable.getOutLinks();
 
   for(deque<Link*>::iterator link=out_links.begin();link!=out_links.end();link++) {
     if(src==(*link)->GetSrc()) {
@@ -142,7 +138,7 @@ void Node::LinkHasBeenUpdated(const Link *l)
   //if new link *l does not exist in all_links
   if(updated==false) 
   {
-    mytable.addLink(l); //node's outgoing links
+    out_links.push_back(l); //node's outgoing links
   }
 }
 
@@ -150,13 +146,11 @@ void Node::LinkHasBeenUpdated(const Link *l)
 void Node::ProcessIncomingRoutingMessage(const RoutingMessage *m)
 {
   cerr << *this << " Routing Message: "<<*m;
-  return;
 }
 
 void Node::TimeOut()
 {
   cerr << *this << " got a timeout: ignored"<<endl;
-  return;
 }
 
 // void Node::Djistras(Node* dest) {
@@ -270,10 +264,10 @@ Node *Node::GetNextHop(const Node *destination) const //do we neccessarily need 
   // vector<double> costs_vec = nodetable->getCosts();
   // vector<bool> visited_vec = nodetable->getVisited();
   
-  vector<unsigned> preds_vec = mytable.getPreds();
-  vector<double> costs_vec = mytable.getCosts();
-  vector<bool> visited_vec = mytable.getVisited();
-  deque<Link*> outlinks = mytable.getOutLinks(); //outgoing links for node
+  vector<unsigned> preds_vec = mytable->getPreds();
+  vector<double> costs_vec = mytable->getCosts();
+  vector<bool> visited_vec = mytable->getVisited();
+  deque<Link*> outlinks = mytable->getOutLinks(); //outgoing links for node
 
   unsigned neighborIndex;
   double linkCost;
@@ -302,13 +296,13 @@ Node *Node::GetNextHop(const Node *destination) const //do we neccessarily need 
   
   //while the shortest path to dest is not found
   while (fixedNode != destination){ //while the shortest path to dest is not found
-    mytable.addNode(fixedNode);
+    all_nodes.push_back(fixedNode);
     outlinks = fixedNode -> GetRoutingTable() -> getOutLinks();  //assuming that each node has a funciton called getOutLink that returns all outgoing links
     min_cost = 100000000.0;
     min_index = 0;
 
     //update costs for unfixed neighbors
-    for(deque<Link*>::iterator currLink = outlinks.begin(); currLink!= outlinks.end(); ++currLink){
+    for(deque<Link*>::iterator currLink = outlinks->begin(); currLink!= outlinks->end(); ++currLink){
       neighborIndex = (*currLink) -> GetDest();
       
       if(visited_vec[neighborIndex] == false){  //only update the cost if the node is not fixed
@@ -343,7 +337,7 @@ Node *Node::GetNextHop(const Node *destination) const //do we neccessarily need 
     //find the new fixedNode in the list
     myneighbors = *(context->GetNeighbors(fixedNode));
 
-    for (deque<Node*>::iterator j = myneighbors.begin(); j != myneighbors.end(); ++j){
+    for (deque<Node*>::iterator j = myneighbors->begin(); j != myneighbors->end(); ++j){
       //find the node to be fixed next
       neighborIndex = (*j)->GetNumber();
 
@@ -357,7 +351,7 @@ Node *Node::GetNextHop(const Node *destination) const //do we neccessarily need 
 
    // Using the initally initialised table to find the next hop
   unsigned curr = destination -> GetNumber();
-  vector<unsigned> pVec = mytable.getPreds();
+  vector<unsigned> pVec = mytable->getPreds();
   unsigned prev = pVec[curr];
   Node* nextone;
 
@@ -366,9 +360,8 @@ Node *Node::GetNextHop(const Node *destination) const //do we neccessarily need 
     curr = prev;
     prev = pVec[curr];    //change pred 
   }
-
-  deque<Nodes*> all_nodes = mytabe.getAllNodes();
-
+  
+  deque<Node*> all_nodes = mytable->getAllNodes();
   //find the node (nextHop) with index same as curr 
   for(deque<Node*>::const_iterator point = all_nodes.begin(); point!=all_nodes.end();++point){
       if(curr == (*point)->GetNumber()){

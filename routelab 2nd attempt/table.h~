@@ -34,8 +34,7 @@ class Table {
  	vector<bool> getVisited() ;
  	deque<Link*> getOutLinks();
 	deque<Node*> getAllNodes();
-	void addLink();
-	void addNode();
+	deque<Node*> addNode();
  	// void setCosts(vector<double> updatedCosts);
  	// void setPreds(vector<unsigned> updatedPreds);
  	// void setVisited(vector<bool> updatedVisited);

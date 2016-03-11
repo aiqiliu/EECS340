@@ -1,6 +1,5 @@
 #include "table.h"
 #include "node.h"
-#include "link.h"
 
 #include <new>
 #include <string>
@@ -45,10 +44,6 @@ Table::deque<Link*> getOutLinks() {
 
 Table::deque<Node*> getAllNodes() {
     return all_nodes;
-}
-
-Table::void addLink(Link* l) {
-    out_links.push_back(l);
 }
 
 Table::void addNode(Node* n) {

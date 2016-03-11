@@ -4,8 +4,7 @@
 #include <new>
 #include <iostream>
 #include <deque>
-#include <string>
-#include <vector>
+
 
 class RoutingMessage;
 class Table;
