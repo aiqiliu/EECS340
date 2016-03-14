@@ -31,7 +31,7 @@ using std::max;
 #define TMR_TRIES 5
 #define MSS 536
 #define MAX_INFLIGHT MSS*8
-#define RTT 3
+#define RTT 6
 
 
 #define SEND_BUF_SIZE(state) (state.TCP_BUFFER_SIZE - state.SendBuffer.GetSize())
@@ -124,7 +124,7 @@ int main(int argc, char *argv[])
               break;
               case ESTABLISHED:
               {
-                cerr << "!!! TIMEOUT: ESTABLISHED STATE !!! RE-SENDING DATA !!!" << endl;
+                cerr << "!!! TIMEOUT: ESTABLISHED STATE !!!" << endl;
                 if (cxn->state.N > 0) // if there are still packets inflight during the timeout
                 {
                   cerr << "!!! TIMEOUT: ESTABLISHED STATE !!! RE-SEND DATA USING GBN !!!" << endl;
@@ -134,6 +134,7 @@ int main(int argc, char *argv[])
                 else
                 {
                   cerr << "!!! TIMEOUT: ESTABLISHED STATE !!! RE-SENDING ACK !!!" << endl;
+		  sendFlag = 0;
                   SET_ACK(sendFlag);
                   SendPacket(mux, Buffer(NULL, 0), cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, cxn->state.GetRwnd(), sendFlag);
                 }
@@ -305,19 +306,24 @@ int main(int argc, char *argv[])
               cerr << "Last Acked: " << cxn->state.GetLastAcked() << endl;
               cerr << "Last Sent: " << cxn->state.GetLastSent() << endl;
               cerr << "Last Recv: " << cxn->state.GetLastRecvd() << endl;
-              sendSeqNum = cxn->state.GetLastSent() + data.GetSize() + 1;
+              sendSeqNum = cxn->state.GetLastSent() + 1;
               cerr << "increment" << data.GetSize() + 1;
 
               cxn->state.SetState(ESTABLISHED);
               cxn->state.SetLastAcked(recAckNum - 1);
               cxn->state.SetLastRecvd(recSeqNum); 
 
-
+	      
               SET_ACK(sendFlag);
               SendPacket(mux, Buffer(NULL, 0), conn, sendSeqNum, sendAckNum, SEND_BUF_SIZE(cxn->state), sendFlag);
+	      
+
+	      cxn->bTmrActive = true;
+	      cxn->timeout = Time() + RTT;
+	      cxn->state.SetTimerTries(TMR_TRIES);
 
               // ACKS have size 6 for some reason
-              cxn->state.SetLastSent(max((int) cxn->state.GetLastSent() + 7, (int) sendSeqNum));
+              cxn->state.SetLastSent(max((int) cxn->state.GetLastSent() + 1, (int) sendSeqNum));
 
               res.type = WRITE;
               res.connection = conn;
