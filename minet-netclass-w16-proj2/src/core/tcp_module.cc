@@ -368,13 +368,11 @@ int main(int argc, char *argv[])
               if (IS_ACK(receivedFlag) && cxn->state.GetLastRecvd() < recSeqNum)
               {
                 cerr << "ACK is flagged." << endl;
-
                 //packet has data
-                if (data.GetSize() > 0)
+                if (data.GetSize() > 6)
                 {
                   cerr << "The received packet has data" << endl;
-                  cerr << "Recv: " << cxn->state.GetLastRecvd() << endl;
-                
+                  cerr << "Recv: " << cxn->state.GetLastRecvd() << endl;                
                   size_t recvBufferSize = cxn->state.GetRwnd();
                   //if there is an overflow of the received data
                   if (recvBufferSize < data.GetSize()) 
@@ -409,7 +407,9 @@ int main(int argc, char *argv[])
                 else //we receive an empty ACK packet, and want to send our packet out of the send buffer using flow control
                 { //second cycle, client sends an ACK to server 
                   cxn->state.SendBuffer.Erase(0, recAckNum - cxn->state.GetLastAcked() - 1);
-                  cxn->state.N = cxn->state.N - (recAckNum - cxn->state.GetLastAcked() - 1);
+		  cxn->state.N = 0;
+		  // cxn->state.N = cxn->state.N - (recAckNum - cxn->state.GetLastAcked() - 2);
+		  cerr << "num inflight is now " << cxn->state.N << endl;
 
                   cxn->state.SetLastAcked(recAckNum);
                   cxn->state.SetLastRecvd(recSeqNum);
@@ -420,7 +420,6 @@ int main(int argc, char *argv[])
                   cxn->state.SendBuffer.Print(cerr);
                   cerr << endl;
 
-                  cxn->state.N = cxn->state.N - (recAckNum - cxn->state.GetLastAcked() - 1);
   
                   // send some of the information in the buffer if there is an overflow in the sendbuffer
                   if (cxn->state.SendBuffer.GetSize() - cxn->state.GetN() > 0)
@@ -659,7 +658,7 @@ int main(int argc, char *argv[])
         {
           cerr << "\n   ~~~ SOCK: CLOSE ~~~\n";
           ConnectionList<TCPState>::iterator cxn = connectionsList.FindMatching(req.connection);
-          if (cxn->state.GetState() == CLOSE_WAIT) //established connection, now call for close 
+          if (cxn->state.GetState() == ESTABLISHED || cxn->state.GetState() == SYN_RCVD) //established connection, now call for close 
           {
             // timeout stuff
             cxn->bTmrActive = true;
@@ -667,7 +666,7 @@ int main(int argc, char *argv[])
             cxn->state.SetTimerTries(TMR_TRIES);
 	    
 	    sendFlag = 0;
-            cxn->state.SetState(LAST_ACK);
+            cxn->state.SetState(FIN_WAIT1);
             SET_FIN(sendFlag); //send fin to activate closing
             SET_ACK(sendFlag);
             SendPacket(mux, Buffer(NULL, 0), cxn->connection, cxn->state.GetLastSent(), cxn->state.GetLastRecvd() + 1, cxn->state.GetRwnd(), sendFlag);
